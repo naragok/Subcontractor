@@ -1,0 +1,2708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>토목현장 하도급 기성 순차 청구 및 사정 대장 (공정별 통합 관리)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        /* PC 환경 스크롤바 디자인 최적화 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background-color: white !important;
+                padding: 0 !important;
+            }
+            .print-container {
+                box-shadow: none !important;
+                border: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            table {
+                border-collapse: collapse !important;
+            }
+            th, td {
+                border: 1px solid #000000 !important;
+                color: #000000 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col overflow-x-hidden text-slate-800">
+
+    <!-- 탑 글로벌 프로젝트 정보 바 (PC 가시성 향상) -->
+    <header class="no-print bg-slate-900 text-white px-6 py-4 flex items-center justify-between shadow-lg border-b border-slate-800 z-50">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-600 rounded-xl shadow-md">
+                <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <span class="text-xs text-blue-400 font-bold block uppercase tracking-wider">General Contractor Management</span>
+                <span class="font-black text-lg text-slate-100 tracking-tight">원청사 하도급 기성 사정 및 검토 시스템 (PC 최적화)</span>
+            </div>
+        </div>
+        <div class="hidden lg:flex items-center gap-6 text-xs text-slate-400">
+            <div>
+                <span class="block text-[10px] text-slate-500">선택 원청사</span>
+                <span id="headerCompanyName" class="font-bold text-slate-200">-</span>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div>
+                <span class="block text-[10px] text-slate-500">활성 현장명</span>
+                <span id="headerSiteName" class="font-bold text-slate-200">-</span>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div>
+                <span class="block text-[10px] text-slate-500">지정 협력사</span>
+                <span id="headerSubcontractorName" class="font-bold text-slate-200">-</span>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span class="text-slate-300 font-bold">원청사 서버 동기화 완료</span>
+            </div>
+        </div>
+        <!-- 모바일 탑 컨트롤 전용 토글 -->
+        <div class="flex lg:hidden items-center gap-2">
+            <button onclick="toggleLeftSidebar()" class="p-2 text-slate-300 hover:text-white">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 전체 3단 레이아웃 컨테이너 -->
+    <div class="flex-1 flex relative">
+
+        <!-- 1. 좌측 메뉴 (Left Sidebar) - 데스크톱 고정 / 모바일 드로워 -->
+        <aside id="leftSidebar" class="no-print fixed inset-y-0 left-0 z-40 w-64 bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800 transition-transform -translate-x-full lg:translate-x-0 lg:static lg:h-auto">
+            
+            <!-- 프로젝트 현장 요약 정보 카드 -->
+            <div class="p-4 mx-3 my-4 bg-slate-900 rounded-xl border border-slate-800">
+                <div class="flex items-center justify-between text-[11px] mb-1.5 text-slate-400">
+                    <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3 text-red-400"></i> 현장 구분:</span>
+                    <span class="font-semibold text-emerald-400">토목 공종 활성</span>
+                </div>
+                <div id="sidebarActiveProjectTitle" class="text-xs font-bold text-slate-200 truncate">현장을 선택해 주세요</div>
+                <div class="mt-3 flex items-center justify-between">
+                    <span class="px-2.5 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30" id="sidebarClaimRound">제 2회차 기성</span>
+                    <span class="text-[10px] text-slate-500 font-medium">2026.06.24 기준</span>
+                </div>
+            </div>
+
+            <!-- 회차 관리 (순차 연적 엔진) -->
+            <div class="px-4 mb-4 flex-1 overflow-y-auto space-y-4">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                    <span>기성 청구 이력 및 회차 선택</span>
+                    <i data-lucide="history" class="w-3.5 h-3.5 text-slate-500"></i>
+                </div>
+                <!-- 회차 리스트가 뿌려질 영역 -->
+                <div id="roundHistoryList" class="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                    <!-- JS동적 추가 -->
+                </div>
+                
+                <button onclick="createNewSequentialRound()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-950/30">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> 다음 회차 추가 (순차이월)
+                </button>
+
+                <div class="h-px bg-slate-800/80 my-2"></div>
+
+                <!-- 메뉴 목록 (대시보드 탭 제어) -->
+                <div class="space-y-1.5">
+                    <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider block mb-1">메인 기능 탭</span>
+                    <button onclick="switchTab('document')" id="btnTab-document" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium bg-slate-800 text-white transition">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-blue-500"></i> 기성 청구 및 사정 대장
+                    </button>
+                    <button onclick="switchTab('monthly')" id="btnTab-monthly" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium hover:bg-slate-900 text-slate-400 transition">
+                        <i data-lucide="calendar-range" class="w-4 h-4 text-purple-500"></i> 월별 시공량 종합 대장
+                    </button>
+                    <button onclick="switchTab('dashboard')" id="btnTab-dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium hover:bg-slate-900 text-slate-400 transition">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-500"></i> 기성고 진척 종합 분석
+                    </button>
+                    <button onclick="switchTab('settings')" id="btnTab-settings" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium hover:bg-slate-900 text-slate-400 transition">
+                        <i data-lucide="settings" class="w-4 h-4 text-amber-500"></i> 마스터 설정 및 등록 관리
+                    </button>
+                </div>
+            </div>
+
+            <!-- 좌측 하단 정보 -->
+            <div class="p-4 border-t border-slate-800 text-[10px] text-slate-500 bg-slate-950">
+                <div class="flex justify-between items-center mb-1">
+                    <span>원청 최종 결정액:</span>
+                    <span class="text-emerald-400 font-bold text-xs" id="sidebarTotalApproved">₩ 0</span>
+                </div>
+                <div class="mt-2 text-center text-slate-600">
+                    © 2026 GENERAL CONTRACTOR CORP.
+                </div>
+            </div>
+        </aside>
+
+        <!-- 2. 중앙 메인 컨텐츠 영역 -->
+        <main class="flex-1 min-w-0 flex flex-col p-4 sm:p-6 lg:p-8 bg-slate-100 overflow-y-auto">
+            
+            <!-- 상단 원청 전용 제어 패널 (PC 특화 와이드 뷰) -->
+            <div class="no-print bg-slate-900 text-white rounded-2xl shadow-xl p-5 mb-6 border border-slate-800">
+                <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-lg font-black text-white"><span id="headerRoundTitle" class="text-blue-400 font-black">제 2회차</span> 하도급 공정 사정 및 검토</h2>
+                            <span class="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] font-bold rounded border border-blue-500/30">수량·금액 상호 연동 연산</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">공종별 대분류 소계 엔진 및 실시간 리스크 검출 시스템이 상시 작동 중입니다. 금액 혹은 수량을 양방향 수정할 수 있습니다.</p>
+                    </div>
+
+                    <!-- 탑바 제어 액션들 -->
+                    <div class="flex flex-wrap items-center gap-2.5 w-full xl:w-auto justify-start xl:justify-end">
+                        <!-- 공정 필터 기능 -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 flex items-center gap-2 text-xs">
+                            <span class="text-slate-400 font-medium">공정 분류 필터:</span>
+                            <select id="categoryFilter" onchange="filterCategory(this.value)" class="bg-slate-900 text-white font-bold px-2 py-0.5 rounded border border-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="ALL">전체 보기</option>
+                                <option value="토공사">토공사</option>
+                                <option value="구조물공사">구조물공사</option>
+                                <option value="배수공">배수공</option>
+                            </select>
+                        </div>
+
+                        <!-- 검토 상태 -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 flex items-center gap-2 text-xs">
+                            <span class="text-slate-400 font-medium">사정검토 상태:</span>
+                            <select id="docStatus" onchange="updateStatusStyle(this.value)" class="bg-slate-900 text-white font-extrabold px-2 py-0.5 rounded border border-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="received">📥 청구서 제출</option>
+                                <option value="reviewing" selected>🔍 원청 실측 검토</option>
+                                <option value="adjusted">⚠️ 조정 협의완료</option>
+                                <option value="approved">✅ 최종 사정승인</option>
+                            </select>
+                        </div>
+                        
+                        <button onclick="openExcelPasteModal()" class="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 border border-emerald-600 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition shadow-lg shadow-emerald-950/30">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> 엑셀 붙여넣기
+                        </button>
+                        <button onclick="openAddRowModal()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs rounded-lg flex items-center gap-1.5 transition">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-blue-400"></i> 공종 등록
+                        </button>
+                        <button onclick="window.print()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition shadow-lg shadow-blue-950/30">
+                            <i data-lucide="printer" class="w-4 h-4"></i> 인쇄 / PDF 출력
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 1: 기성 대장 및 청구서 (Main Document) -->
+            <div id="tabContent-document" class="tab-pane">
+                <div class="print-container bg-white rounded-2xl shadow-sm border border-slate-200 p-6 xl:p-10 transition-all">
+                    
+                    <!-- PC 퀵 카드 요약 지표 (Widescreen KPI Dashboard) -->
+                    <div class="no-print grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <span class="text-[10px] text-slate-400 font-bold block uppercase">총 도급(계약) 총액</span>
+                            <span class="text-lg font-black text-slate-800 mt-1 block" id="kpiContractAmt">₩ 0</span>
+                        </div>
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <span class="text-[10px] text-blue-500 font-bold block uppercase">금회 협력사 청구액</span>
+                            <span class="text-lg font-black text-blue-600 mt-1 block" id="kpiClaimAmt">₩ 0</span>
+                        </div>
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <span class="text-[10px] text-emerald-500 font-bold block uppercase">금회 원청 사정결정액</span>
+                            <span class="text-lg font-black text-emerald-600 mt-1 block" id="kpiApprovedAmt">₩ 0</span>
+                        </div>
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <span class="text-[10px] text-purple-500 font-bold block uppercase">원청 최종 실 지급액</span>
+                            <span class="text-lg font-black text-purple-600 mt-1 block" id="kpiNetPayout">₩ 0</span>
+                        </div>
+                    </div>
+
+                    <!-- 결재 및 상호 보고 결재선 -->
+                    <div class="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
+                        <div>
+                            <span id="printStatusBadge" class="hidden print:inline-block px-3 py-1 border border-slate-600 text-slate-800 font-bold rounded-md text-xs uppercase mb-2">
+                                [원청 실측 검토 중]
+                            </span>
+                        </div>
+                        <div class="border border-slate-400 text-[10px] text-center flex">
+                            <div class="bg-slate-100 px-2 py-4 font-bold border-r border-slate-400 flex items-center justify-center w-10 text-slate-700">
+                                원<br>청<br>결<br>재
+                            </div>
+                            <div class="w-16 border-r border-slate-400">
+                                <div class="border-b border-slate-400 py-1 bg-slate-50">공무담당</div>
+                                <div class="h-12 flex items-center justify-center text-slate-300">인</div>
+                            </div>
+                            <div class="w-16 border-r border-slate-400">
+                                <div class="border-b border-slate-400 py-1 bg-slate-50">공사팀장</div>
+                                <div class="h-12 flex items-center justify-center text-slate-300">인</div>
+                            </div>
+                            <div class="w-16">
+                                <div class="border-b border-slate-400 py-1 bg-slate-50">현장소장</div>
+                                <div class="h-12 flex items-center justify-center text-slate-300">인</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 타이틀 -->
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-black text-slate-900 tracking-tight underline decoration-double decoration-slate-400 underline-offset-8">하도급 공정별 기성 검토 사정대장</h2>
+                        <p class="text-xs text-slate-500 mt-3" id="currentDateDisplay">조회일자: 2026년 06월 24일</p>
+                    </div>
+
+                    <!-- 문서 기본 메타 정보 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-xs">
+                        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+                            <table class="w-full text-left">
+                                <tr class="h-8">
+                                    <td class="w-24 font-bold text-slate-600">원 도 급 사</td>
+                                    <td>
+                                        <select id="mainClientSelect" onchange="onCompanySelectChange(this.value)" class="w-full bg-transparent border-b border-slate-300 focus:border-blue-500 focus:bg-white rounded px-1 outline-none py-0.5 font-bold">
+                                            <!-- JS 동적 생성 -->
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr class="h-8">
+                                    <td class="w-24 font-bold text-slate-600">공 사 명</td>
+                                    <td>
+                                        <select id="mainProjectSelect" onchange="onSiteSelectChange(this.value)" class="w-full bg-transparent border-b border-slate-300 focus:border-blue-500 focus:bg-white rounded px-1 outline-none py-0.5 font-bold">
+                                            <!-- JS 동적 생성 -->
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr class="h-8">
+                                    <td class="font-bold text-slate-600">금회 청구회차</td>
+                                    <td>
+                                        <div class="flex items-center gap-1 font-bold">
+                                            <span id="contentRoundText" class="text-blue-600">제 2회차 기성 사정</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col justify-between">
+                            <table class="w-full text-left">
+                                <tr class="h-8">
+                                    <td class="w-24 font-bold text-slate-600">하 도 급 사</td>
+                                    <td>
+                                        <select id="mainSubcontractorSelect" onchange="onSubcontractorSelectChange(this.value)" class="w-full bg-transparent border-b border-slate-300 focus:border-blue-500 focus:bg-white rounded px-1 outline-none py-0.5 font-bold text-emerald-800">
+                                            <!-- JS 동적 생성 -->
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr class="h-8">
+                                    <td class="font-bold text-slate-600">하도급 대표자</td>
+                                    <td><input id="mainRepName" type="text" value="홍 길 동" readonly class="w-full bg-slate-100 border-b border-slate-200 rounded px-1 outline-none py-0.5 text-slate-500 font-semibold cursor-not-allowed"></td>
+                                </tr>
+                                <tr class="h-8">
+                                    <td class="font-bold text-slate-600">원청사 결정 사정액</td>
+                                    <td class="text-emerald-700 font-extrabold text-sm" id="totalGCApprovedAmtDisplay">₩ 0</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 누적 기성율 진행 바 -->
+                    <div class="mb-6 p-4 border border-blue-100 rounded-xl bg-blue-50/20 text-xs">
+                        <div class="flex justify-between text-[11px] font-bold text-slate-700 mb-1.5">
+                            <span id="summaryProgressText">기성 사정율: 0%</span>
+                            <span id="summaryRatioText" class="text-blue-700">원청 기성 비율: 0%</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden flex">
+                            <div id="barPrev" class="bg-slate-400 h-full transition-all duration-300" style="width: 0%"></div>
+                            <div id="barCurrent" class="bg-blue-600 h-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 엑셀 직접 간편 붙여넣기 퀵 패널 -->
+                    <div class="no-print mb-6 border-2 border-dashed border-emerald-300 rounded-xl bg-emerald-50/30 p-4 transition-all hover:bg-emerald-50/50">
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 bg-emerald-600 text-white rounded-lg shadow">
+                                    <i data-lucide="zap" class="w-5 h-5 animate-pulse"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-black text-slate-800">
+                                        엑셀 직접 간편 붙여넣기 (마우스 우클릭 -> 붙여넣기 또는 Ctrl+V)
+                                    </h4>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">엑셀 시트에서 대분류, 공종명, 규격, 단위, 수량, 단가 영역을 복사(Ctrl+C)한 뒤 아래 우측 입력칸에 포커스를 대고 붙여넣으세요.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 w-full md:w-auto">
+                                <input type="text" id="directPasteInput" onpaste="handleDirectPaste(event)" placeholder="여기에 대고 Ctrl+V 단축키 입력" class="w-full md:w-72 px-3 py-2 border-2 border-emerald-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 rounded-lg text-xs font-semibold outline-none bg-white text-emerald-800 placeholder-emerald-400 text-center shadow-inner transition-all">
+                                <button onclick="openExcelPasteModal()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition whitespace-nowrap">
+                                    <i data-lucide="sliders" class="w-3.5 h-3.5 text-emerald-400"></i> 상세 옵션 연동
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 실측 검토 테이블 (공정별 소계 그룹 포함, PC 화면 극대화) -->
+                    <div class="overflow-x-auto border border-slate-200 rounded-xl mb-6 shadow-sm">
+                        <table class="w-full min-w-[1550px] border-collapse text-[11px] text-center text-slate-700">
+                            <thead>
+                                <tr class="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold h-11">
+                                    <th rowspan="2" class="w-10 border-r border-slate-200 bg-slate-100">No</th>
+                                    <th rowspan="2" class="w-36 border-r border-slate-200 bg-slate-100">세부공종</th>
+                                    <th rowspan="2" class="w-16 border-r border-slate-200 bg-slate-100">규격</th>
+                                    <th rowspan="2" class="w-12 border-r border-slate-200 bg-slate-100">단위</th>
+                                    <th colspan="3" class="border-b border-slate-200 border-r border-slate-200 bg-slate-50">하도급 계약 (전체)</th>
+                                    <th colspan="2" class="border-b border-slate-200 border-r border-slate-200 bg-slate-100/70 text-slate-800 font-bold">전회까지 누계</th>
+                                    <th colspan="2" class="border-b border-slate-200 border-r border-slate-200 text-blue-900 bg-blue-50/50">협력사 금회 청구</th>
+                                    <th colspan="3" class="border-b border-slate-200 border-r border-slate-200 text-emerald-900 bg-emerald-50">원청사 금회 사정 (조정)</th>
+                                    <th colspan="2" class="border-b border-slate-200 border-r border-slate-200 bg-slate-50">결정 후 최종 누계</th>
+                                    <th rowspan="2" class="w-28 border-r border-slate-200 bg-slate-100">조정 사유</th>
+                                    <th rowspan="2" class="w-10 no-print bg-slate-100">삭제</th>
+                                </tr>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-slate-800 font-semibold h-9">
+                                    <th class="w-14 border-r border-slate-200">수량</th>
+                                    <th class="w-16 border-r border-slate-200">단가</th>
+                                    <th class="w-24 border-r border-slate-200">금액</th>
+                                    <th class="w-14 border-r border-slate-200 bg-slate-100/50">수량</th>
+                                    <th class="w-24 border-r border-slate-200 bg-slate-100/50">금액</th>
+                                    
+                                    <!-- 금회청구 수량/금액 상호 연동 -->
+                                    <th class="w-14 border-r border-slate-200 text-blue-900 bg-blue-50/30">수량(입력)</th>
+                                    <th class="w-24 border-r border-slate-200 text-blue-900 bg-blue-50/30">금액(입력)</th>
+                                    
+                                    <!-- 원청사정 수량/금액 상호 연동 -->
+                                    <th class="w-14 border-r border-slate-200 text-emerald-900 bg-emerald-50/50">수량(입력)</th>
+                                    <th class="w-24 border-r border-slate-200 text-emerald-900 bg-emerald-50/50">금액(입력)</th>
+                                    <th class="w-12 border-r border-slate-200 text-emerald-900 bg-emerald-50/50">기성율</th>
+                                    
+                                    <th class="w-16 border-r border-slate-200">수량</th>
+                                    <th class="w-24 border-r border-slate-200">금액</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <!-- JS 동적 바인딩 -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-slate-200 font-black border-t border-slate-300 h-11 text-slate-900">
+                                    <td colspan="4" class="text-center border-r border-slate-300">종 합 총 계</td>
+                                    <td class="border-r border-slate-200"></td>
+                                    <td class="border-r border-slate-200"></td>
+                                    <td id="sumContractAmt" class="text-right px-1.5 border-r border-slate-200 font-extrabold">0</td>
+                                    <td class="border-r border-slate-200"></td>
+                                    <td id="sumPrevAmt" class="text-right px-1.5 border-r border-slate-200 font-bold">0</td>
+                                    <td class="border-r border-slate-200"></td>
+                                    <td id="sumSubClaimAmt" class="text-right px-1.5 border-r border-slate-200 text-blue-950 font-bold">0</td>
+                                    <td class="border-r border-slate-200"></td>
+                                    <td id="sumGCApprovedAmt" class="text-right px-1.5 border-r border-slate-200 text-emerald-900 font-extrabold">0</td>
+                                    <td id="avgProgressRate" class="text-center border-r border-slate-200 text-emerald-800">0%</td>
+                                    <td class="border-r border-slate-200"></td>
+                                    <td id="sumAccumAmt" class="text-right px-1.5 border-r border-slate-200 font-bold">0</td>
+                                    <td class="border-r border-slate-200"></td>
+                                    <td class="no-print"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- AI 기성 리포트 패널 -->
+                    <div class="no-print mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <i data-lucide="sparkles" class="w-4 h-4 text-blue-600 animate-pulse"></i> Gemini AI 하도급 기성 검토 조치의견서 자동 작성
+                            </span>
+                            <button onclick="generateAIReport()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow-md flex items-center gap-1.5">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 분석의견서 생성/갱신
+                            </button>
+                        </div>
+                        <div id="aiReportBox" class="text-xs text-slate-600 leading-relaxed bg-white border border-slate-100 p-3.5 rounded-lg max-h-[160px] overflow-y-auto italic">
+                            의견서 생성 버튼을 누르면 현재 청구 수량, 전회 누계, 원청 사정 정보 및 초과 리스크를 정밀 분석하여 소장 결재용 원고를 자동 생성합니다.
+                        </div>
+                    </div>
+
+                    <!-- 하단 공제 및 정산 요약 보고서 -->
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+                        <!-- 공제 항목 직접 입력 (원청 권한) -->
+                        <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/50 no-print">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2 text-xs mb-4">
+                                <i data-lucide="calculator" class="w-4 h-4 text-blue-600"></i> 원청 전용 공제액 정밀 세부 정산 제어
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-slate-600 font-medium">하자보수유보금 설정 요율</span>
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" id="retentionRate" value="5" oninput="updateDeductions()" class="w-12 text-center border border-slate-300 rounded p-1 font-bold">%
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-slate-600 font-medium">선급금 정산 공제액</span>
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" id="deductAdvance" value="0" oninput="updateDeductions()" class="w-24 text-right border border-slate-300 rounded p-1 font-bold">원
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-slate-600 font-medium">안전보건관리비 공제액</span>
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" id="deductSafety" value="0" oninput="updateDeductions()" class="w-24 text-right border border-slate-300 rounded p-1 font-bold">원
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-slate-600 font-semibold text-blue-800">현장 유류대 공제액</span>
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" id="deductFuel" value="0" oninput="updateDeductions()" class="w-24 text-right border border-blue-300 rounded p-1 font-extrabold text-blue-800 bg-blue-50/30">원
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-slate-600 font-medium">고용보증보험 공제액</span>
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" id="deductInsurance" value="0" oninput="updateDeductions()" class="w-24 text-right border border-slate-300 rounded p-1 font-bold">원
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-slate-600 font-medium">사회보험 공제액 (연금/국민)</span>
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" id="deductPension" value="0" oninput="updateDeductions()" class="w-24 text-right border border-slate-300 rounded p-1 font-bold">원
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-slate-600 font-semibold text-amber-800">현장 식대 공제액</span>
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" id="deductMeal" value="0" oninput="updateDeductions()" class="w-24 text-right border border-amber-300 rounded p-1 font-extrabold text-amber-800 bg-amber-50/30">원
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-slate-600 font-medium">기타 관리 공제액</span>
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" id="deductOthers" value="0" oninput="updateDeductions()" class="w-24 text-right border border-slate-300 rounded p-1 font-bold">원
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 사정 및 정산 집계표 -->
+                        <div class="border border-slate-300 rounded-xl p-5 bg-emerald-50/10 flex flex-col justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-800 flex items-center gap-2 text-xs mb-4">
+                                    <i data-lucide="file-check" class="w-4 h-4 text-emerald-600"></i> 원청 최종 사정 및 계약 정산 집계표
+                                </h3>
+                                <div class="grid grid-cols-2 gap-4 text-xs">
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-500 font-medium">① 금회 원청 사정 원금</span>
+                                            <span class="font-bold text-slate-800" id="calcApproved">₩ 0</span>
+                                        </div>
+                                        <div class="flex justify-between text-rose-600 font-medium">
+                                            <span class="text-slate-500">② 하자보수유보금 유보</span>
+                                            <span id="calcRetention">(-) ₩ 0</span>
+                                        </div>
+                                        <div class="flex justify-between text-rose-600 font-medium">
+                                            <span class="text-slate-500">③ 선급금 상계 공제액</span>
+                                            <span id="calcDeductAdvance">(-) ₩ 0</span>
+                                        </div>
+                                        <div class="flex justify-between text-blue-800 font-semibold border-t border-dashed border-slate-200 pt-1">
+                                            <span class="text-slate-500">④ 유류대 정산 공제액</span>
+                                            <span id="calcDeductFuel">(-) ₩ 0</span>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between text-rose-600 font-medium">
+                                            <span class="text-slate-500">⑤ 안전 관리비 공제액</span>
+                                            <span id="calcDeductSafety">(-) ₩ 0</span>
+                                        </div>
+                                        <div class="flex justify-between text-amber-800 font-semibold">
+                                            <span class="text-slate-500">⑥ 식대 실비 공제액</span>
+                                            <span id="calcDeductMeal">(-) ₩ 0</span>
+                                        </div>
+                                        <div class="flex justify-between text-rose-600 font-medium">
+                                            <span class="text-slate-500">⑦ 사회보험 등 공제액</span>
+                                            <span id="calcDeductEtc">(-) ₩ 0</span>
+                                        </div>
+                                        <div class="flex justify-between text-rose-600 font-medium border-t border-dashed border-slate-200 pt-1">
+                                            <span class="text-slate-500">⑧ 기타 잔여 공제액</span>
+                                            <span id="calcDeductOthers">(-) ₩ 0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="border-t border-slate-300 pt-3 mt-4 flex items-center justify-between">
+                                <span class="font-bold text-slate-900 text-xs">하도급 최종 지급 실 집행액 (①-②-③-④-⑤-⑥-⑦-⑧)</span>
+                                <span class="text-xl font-black text-emerald-700" id="calcNetPayout">₩ 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- TAB 2: 월별 시공량 기성 종합 대장 (Monthly Ledger) -->
+            <div id="tabContent-monthly" class="tab-pane hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="calendar-range" class="text-purple-500"></i> 월별 시공 수량 및 누적 기성고 종합대장 (공정별 분할 관리)
+                        </h3>
+                        <span class="text-xs text-slate-400">단위: 해당 수량 (단가 곱해 기성 자동계산 연동)</span>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-200 rounded-xl mb-6">
+                        <table class="w-full min-w-[1450px] border-collapse text-[11px] text-center text-slate-700">
+                            <thead>
+                                <tr class="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold h-11">
+                                    <th class="w-10 border-r border-slate-200 bg-slate-100">No</th>
+                                    <th class="w-36 border-r border-slate-200 bg-slate-100">세부공종</th>
+                                    <th class="w-16 border-r border-slate-200 bg-slate-100">계약수량</th>
+                                    <th class="w-16 border-r border-slate-200 bg-slate-100">전체금액</th>
+                                    <!-- 1월~12월 수량 입력란 -->
+                                    <th class="w-16 border-r border-slate-200">1월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">2월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">3월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">4월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">5월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">6월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">7월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">8월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">9월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">10월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">11월 기성</th>
+                                    <th class="w-16 border-r border-slate-200">12월 기성</th>
+                                    <th class="w-20 border-r border-slate-200 bg-slate-50 font-bold">누계시공량</th>
+                                    <th class="w-24 bg-slate-50 font-bold">잔여시공량</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monthlyTableBody">
+                                <!-- JS 동적 바인딩 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: 종합 대시보드 (Dashboard View) -->
+            <div id="tabContent-dashboard" class="tab-pane hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="line-chart" class="text-emerald-500"></i> 전 공정 통합 기성고 다차원 시각화 대시보드
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <span class="text-xs text-slate-400 block font-medium">전체 계약금액 합계</span>
+                            <span class="text-lg font-bold text-slate-800 block mt-1" id="dashTotalContract">₩ 0</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <span class="text-xs text-slate-400 block font-medium">원청 금회 사정총액</span>
+                            <span class="text-lg font-bold text-emerald-600 block mt-1" id="dashTotalApproved">₩ 0</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <span class="text-xs text-slate-400 block font-medium">원청 결정 실 누계액</span>
+                            <span class="text-lg font-bold text-blue-600 block mt-1" id="dashTotalAccum">₩ 0</span>
+                        </div>
+                    </div>
+
+                    <!-- 데이터 시각화 리스트 -->
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">📊 대공정 단위 통합 기성 집계 분석</h4>
+                            <div id="categorySummaryProgress" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <!-- JS 동적 바인딩 -->
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100">
+                            <h4 class="text-xs font-semibold text-slate-500 mb-3">공종별 진척률 상세 분석 (순차 연적 기준)</h4>
+                            <div id="dashboardProgressBarContainer" class="space-y-3">
+                                <!-- JS 동적 바인딩 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: 환경 및 마스터 설정 (Settings View) -->
+            <div id="tabContent-settings" class="tab-pane hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-8">
+                    
+                    <!-- 탑 배포 및 초기화 전용 원청사 컨트롤 룸 -->
+                    <div class="p-5 bg-slate-900 text-white rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-sm font-black text-slate-100 flex items-center gap-1.5">
+                                <i data-lucide="cloud-lightning" class="w-4.5 h-4.5 text-blue-400"></i> 기성 시스템 데이터 통합 배포 및 초기화
+                            </h3>
+                            <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">작성 중인 원청/협력사 정보, 기성 사정고, 월별 시공 데이터 전체를 파일로 즉시 추출해 배포하거나 백업 파일을 등록해 시스템 전체를 한 번에 복원할 수 있습니다.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-start md:justify-end gap-2 text-xs font-bold">
+                            <!-- 파일 가져오기 (히든 인풋 포함) -->
+                            <input type="file" id="importJsonFileInput" onchange="importData(event)" class="hidden" accept=".json">
+                            <button onclick="document.getElementById('importJsonFileInput').click()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition">
+                                <i data-lucide="upload" class="w-4 h-4 text-purple-400"></i> 배포 파일 로드 (.JSON)
+                            </button>
+                            <button onclick="exportData()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-1.5 transition shadow shadow-blue-950/30">
+                                <i data-lucide="download" class="w-4 h-4 text-white"></i> 기성 데이터 배포 추출
+                            </button>
+                            <button onclick="requestSystemReset()" class="px-4 py-2 bg-rose-600/90 hover:bg-rose-700 text-white rounded-lg flex items-center gap-1.5 transition">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4 text-white"></i> 시스템 초기화
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
+                            <i data-lucide="sliders" class="text-amber-500"></i> 원도급-하도급 기성 공정 마스터 관리
+                        </h3>
+                        <p class="text-xs text-slate-500">대공종 분류와 하도급 요율, 제어 방식을 관리합니다.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
+                        <div class="space-y-4">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase">기본 요율 및 소속 설정</h4>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">하자보수보증요율 설정 (기본 5%)</label>
+                                <input type="number" id="settingsRetention" value="5" oninput="syncSettings('retention', this.value)" class="w-full max-w-xs border border-slate-300 rounded px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">원청 책임 검토부서</label>
+                                <input type="text" value="인프라공사본부 토목팀" class="w-full max-w-xs border border-slate-300 rounded px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- 현장 대공정 리스트 관리 -->
+                        <div class="border-l border-slate-100 pl-0 md:pl-6">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase mb-3">활성 대공정 목록</h4>
+                            <div class="space-y-2" id="masterCategoryList">
+                                <!-- JS 동적 생성 -->
+                            </div>
+                            <div class="mt-4 flex gap-2">
+                                <input type="text" id="newCategoryInput" placeholder="새 대공정 이름" class="border border-slate-300 rounded px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 flex-1">
+                                <button onclick="addNewCategory()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded shadow-sm">추가</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 원청사 / 현장 / 협력사 마스터 데이터 레지스트리 관리 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+                        
+                        <!-- [1] 원청사(회사) 관리 카드 -->
+                        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/40">
+                            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+                                <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <i data-lucide="building-2" class="w-4 h-4 text-blue-600"></i> ① 원청사(회사) 관리
+                                </h4>
+                                <span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold" id="companyRegistryCount">0개</span>
+                            </div>
+                            <div class="space-y-2 max-h-[220px] overflow-y-auto mb-4 pr-1" id="companyRegistryList">
+                                <!-- JS 동적 렌더링 -->
+                            </div>
+                            <div class="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                                <span class="text-[10px] font-bold text-slate-500 block">원청사 신규 등록</span>
+                                <input type="text" id="regCompName" placeholder="회사 상호명" class="w-full border border-slate-200 rounded p-1 text-xs outline-none focus:border-blue-500">
+                                <input type="text" id="regCompRep" placeholder="대표자명" class="w-full border border-slate-200 rounded p-1 text-xs outline-none focus:border-blue-500">
+                                <button onclick="registerNewCompany()" class="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded shadow-sm">원청사 등록</button>
+                            </div>
+                        </div>
+
+                        <!-- [2] 소속 현장 관리 카드 -->
+                        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/40">
+                            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+                                <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <i data-lucide="map-pin" class="w-4 h-4 text-emerald-600"></i> ② 소속 현장(프로젝트) 관리
+                                </h4>
+                                <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold" id="siteRegistryCount">0개</span>
+                            </div>
+                            <div class="space-y-2 max-h-[220px] overflow-y-auto mb-4 pr-1" id="siteRegistryList">
+                                <!-- JS 동적 렌더링 -->
+                            </div>
+                            <div class="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                                <span class="text-[10px] font-bold text-slate-500 block">현장 신규 등록</span>
+                                <select id="regSiteCompId" class="w-full border border-slate-200 rounded p-1 text-xs bg-white outline-none">
+                                    <!-- 원청사 리스트 동적 삽입 -->
+                                </select>
+                                <input type="text" id="regSiteName" placeholder="공사 현장명" class="w-full border border-slate-200 rounded p-1 text-xs outline-none focus:border-emerald-500">
+                                <button onclick="registerNewSite()" class="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded shadow-sm">현장 등록</button>
+                            </div>
+                        </div>
+
+                        <!-- [3] 협력업체(하도급사) 관리 카드 -->
+                        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/40">
+                            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+                                <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <i data-lucide="users" class="w-4 h-4 text-purple-600"></i> ③ 협력업체(하도급사) 관리
+                                </h4>
+                                <span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold" id="subconRegistryCount">0개</span>
+                            </div>
+                            <div class="space-y-2 max-h-[220px] overflow-y-auto mb-4 pr-1" id="subconRegistryList">
+                                <!-- JS 동적 렌더링 -->
+                            </div>
+                            <div class="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                                <span class="text-[10px] font-bold text-slate-500 block">협력사 신규 등록</span>
+                                <input type="text" id="regSubName" placeholder="협력사 상호명" class="w-full border border-slate-200 rounded p-1 text-xs outline-none focus:border-purple-500">
+                                <input type="text" id="regSubRep" placeholder="대표자명" class="w-full border border-slate-200 rounded p-1 text-xs outline-none focus:border-purple-500">
+                                <button onclick="registerNewSubcontractor()" class="w-full py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded shadow-sm">협력사 등록</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 3. 우측 메뉴 (Right Sidebar) - 모니터링 및 실시간 리스크 보드 -->
+        <aside id="rightSidebar" class="no-print fixed inset-y-0 right-0 z-40 w-72 bg-white border-l border-slate-200 flex flex-col transition-transform translate-x-full lg:translate-x-0 lg:static lg:h-auto">
+            
+            <!-- 실시간 리스크 요약 헤더 -->
+            <div class="p-4 border-b border-slate-100 bg-slate-50">
+                <div class="flex items-center gap-2 text-slate-800 font-bold text-xs">
+                    <i data-lucide="shield-alert" class="w-4 h-4 text-rose-500 animate-pulse"></i>
+                    <span>실시간 실측 한도 모니터링</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1">계약 한도를 초과하거나 부적정 청구 요소가 발견되는지 백그라운드에서 상시 모니터링합니다.</p>
+            </div>
+
+            <!-- 모니터링 카드 1: 오버 청구 수량 파악 -->
+            <div class="p-4 border-b border-slate-100 flex-1 overflow-y-auto space-y-4">
+                <div>
+                    <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">⚠️ 계약한도 초과 위반 검출</span>
+                    <div id="overClaimIndicator" class="p-2.5 rounded-lg border text-xs">
+                        <!-- JS 실시간 상태 반영 -->
+                    </div>
+                </div>
+
+                <!-- 모니터링 카드 2: 사정 조정 공종 -->
+                <div>
+                    <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">✏️ 금회 수량/금액 수동 사정 내역</span>
+                    <div id="adjustedList" class="space-y-2">
+                        <!-- JS 실시간 상태 반영 -->
+                    </div>
+                </div>
+
+                <!-- 원청 공무 가이드 체크리스트 -->
+                <div>
+                    <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mb-2">📋 원청 검토 체크리스트</span>
+                    <div class="space-y-1.5 text-xs text-slate-600">
+                        <label class="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-slate-50">
+                            <input type="checkbox" checked class="rounded text-blue-600 focus:ring-blue-500">
+                            <span>현장 굴착 토량 단면 검측서 대조</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-slate-50">
+                            <input type="checkbox" checked class="rounded text-blue-600 focus:ring-blue-500">
+                            <span>사토 운반 덤프 계량표 및 일일 작업 확인</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-slate-50">
+                            <input type="checkbox" class="rounded text-blue-600 focus:ring-blue-500">
+                            <span>옹벽 타설 배합 및 송장 검수 증빙</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-slate-50">
+                            <input type="checkbox" class="rounded text-blue-600 focus:ring-blue-500">
+                            <span>안전보건관리비 실증 영수증 검토</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 우측 하단 퀵 포맷 인쇄 영역 -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50 text-xs">
+                <div class="font-bold text-slate-800 mb-2">원청 실지급액 퀵 계산기</div>
+                <div class="space-y-1.5 text-[11px] text-slate-500">
+                    <div class="flex justify-between">
+                        <span>사정원금:</span>
+                        <span id="quickApproved">₩ 0</span>
+                    </div>
+                    <div class="flex justify-between text-rose-500">
+                        <span>합계 공제액:</span>
+                        <span id="quickDeduction">₩ 0</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-emerald-600 border-t border-slate-200 pt-1.5 mt-1 text-xs">
+                        <span>예상 실지급액:</span>
+                        <span id="quickNet" class="text-emerald-700">₩ 0</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- [공용 모달] 통합 커스텀 확인/삭제 다이얼로그 -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
+            <div id="confirmIconContainer" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-100 text-rose-600 mb-4">
+                <i data-lucide="alert-triangle" class="h-6 w-6"></i>
+            </div>
+            <h3 id="confirmTitle" class="text-sm font-bold text-slate-900 mb-1">영구 제거 확인</h3>
+            <p id="confirmDesc" class="text-xs text-slate-500 mb-6 leading-relaxed">이 데이터를 완전히 삭제하면 연결된 정보가 훼손될 수 있습니다. 계속하시겠습니까?</p>
+            <div class="flex justify-center gap-2 text-xs font-semibold">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg">취소</button>
+                <button id="confirmExecuteBtn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow">삭제 실행</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [모달 1] 공종 추가 커스텀 다이얼로그 -->
+    <div id="addRowModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6">
+            <h3 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <i data-lucide="plus-circle" class="text-blue-600"></i> 새로운 계약 세부공종 등록
+            </h3>
+            <div class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block text-slate-500 font-medium mb-1">상위 대공정 선택</label>
+                    <select id="modalCategory" class="w-full border border-slate-300 rounded px-3 py-2 bg-white">
+                        <!-- JS 동적 바인딩 -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-500 font-medium mb-1">세부공종명</label>
+                    <input type="text" id="modalName" placeholder="예: 토사 사토 운반" class="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-500 font-medium mb-1">규격</label>
+                        <input type="text" id="modalSpec" placeholder="예: 15t 덤프" class="w-full border border-slate-300 rounded px-3 py-2 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-500 font-medium mb-1">단위</label>
+                        <input type="text" id="modalUnit" placeholder="예: ㎥" class="w-full border border-slate-300 rounded px-3 py-2 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-500 font-medium mb-1">계약 수량</label>
+                        <input type="number" id="modalQty" value="1000" class="w-full border border-slate-300 rounded px-3 py-2 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-500 font-medium mb-1">계약 단가 (원)</label>
+                        <input type="number" id="modalPrice" value="25000" class="w-full border border-slate-300 rounded px-3 py-2 outline-none">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2 text-xs font-semibold">
+                <button onclick="closeAddRowModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg">취소</button>
+                <button onclick="saveNewRow()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md">공종 추가 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [모달 3] 엑셀 일괄 붙여넣기 모달 -->
+    <div id="excelPasteModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl p-6 flex flex-col max-h-[90vh]">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 class="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <i data-lucide="file-spreadsheet" class="text-emerald-600"></i> 엑셀 파일 데이터 일괄 복사·붙여넣기 연동
+                </h3>
+                <button onclick="closeExcelPasteModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="text-xs text-slate-500 mb-4 leading-relaxed space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <p class="font-bold text-slate-700"><i data-lucide="info" class="w-3.5 h-3.5 inline text-blue-500"></i> 사용법 안내:</p>
+                <p>1. 엑셀 파일에서 <span class="text-emerald-600 font-bold">대분류(공정), 세부공종, 규격, 단위, 수량, 계약단가</span> 순서로 구성된 셀 영역을 선택한 후 복사(<kbd class="px-1 py-0.5 bg-slate-200 rounded font-mono text-[10px]">Ctrl+C</kbd>)합니다.</p>
+                <p>2. 아래 텍스트 상자를 클릭하고 붙여넣기(<kbd class="px-1 py-0.5 bg-slate-200 rounded font-mono text-[10px]">Ctrl+V</kbd>) 하시면 정합성 미리보기가 하단에 표시됩니다.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 flex-1 min-h-[300px] overflow-hidden">
+                <!-- 입력 필드 영역 -->
+                <div class="md:col-span-1 flex flex-col gap-2">
+                    <label class="block text-xs font-bold text-slate-700">여기에 복사한 셀 붙여넣기:</label>
+                    <textarea id="excelPasteTextarea" oninput="handleExcelPaste(event)" placeholder="엑셀 행을 통째로 복사해서 여기에 붙여넣으세요.&#10;예시:&#10;토공사&#9;토사 굴착&#9;백호 0.8&#9;㎥&#9;12000&#9;6500" class="w-full flex-1 p-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-mono resize-none bg-slate-50/50"></textarea>
+                    
+                    <div class="p-3 border border-slate-200 rounded-lg bg-slate-50/50 space-y-2 text-xs">
+                        <span class="font-semibold text-slate-700 block">가져오기 방식 설정</span>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="excelImportMode" value="append" checked class="text-emerald-600 focus:ring-emerald-500">
+                            <span>기존 내역 뒤에 추가(합산)</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="excelImportMode" value="overwrite" class="text-emerald-600 focus:ring-emerald-500">
+                            <span class="text-rose-600 font-semibold">기존 내역 초기화 후 새로 대체</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 실시간 변환 미리보기 테이블 -->
+                <div class="md:col-span-2 flex flex-col gap-2 overflow-hidden border border-slate-200 rounded-xl bg-slate-50/30 p-2.5">
+                    <span class="text-xs font-bold text-slate-700">정합성 검증 데이터 미리보기:</span>
+                    <div class="flex-1 overflow-auto bg-white border border-slate-100 rounded-lg">
+                        <table class="w-full text-center border-collapse text-[11px] text-slate-600 min-w-[450px]">
+                            <thead>
+                                <tr class="bg-slate-100 font-bold text-slate-700 h-8 border-b border-slate-200">
+                                    <th class="w-10">No</th>
+                                    <th>대분류</th>
+                                    <th>세부공종</th>
+                                    <th>규격</th>
+                                    <th>단위</th>
+                                    <th>수량</th>
+                                    <th>단가</th>
+                                </tr>
+                            </thead>
+                            <tbody id="excelPreviewBody" class="divide-y divide-slate-100">
+                                <tr>
+                                    <td colspan="7" class="py-12 text-slate-400 italic text-center">붙여넣은 데이터가 존재하지 않습니다.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                <span id="excelParsedCount" class="text-slate-500 font-semibold">대기 중...</span>
+                <div class="flex gap-2 font-semibold">
+                    <button onclick="closeExcelPasteModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition">닫기</button>
+                    <button onclick="importExcelData()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-md transition flex items-center gap-1.5">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> 내역서에 데이터 연동 적용
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- [알림] 공용 사용자 알림 배너 레이어 (No-alert 대체용) -->
+    <div id="systemNotification" class="hidden fixed bottom-5 right-5 z-[100] transform translate-y-2 opacity-0 transition-all duration-300">
+        <div class="bg-slate-900 border border-slate-800 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm">
+            <div id="sysNotifyIcon" class="p-1 rounded-full text-white"></div>
+            <div>
+                <p id="sysNotifyTitle" class="text-xs font-bold text-white"></p>
+                <p id="sysNotifyDesc" class="text-[10px] text-slate-400 mt-0.5"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 스크립트 제어 영역 -->
+    <script>
+        // 대공정 마스터 리스트
+        let categories = ['토공사', '구조물공사', '배수공'];
+
+        // 원청사 데이터
+        let companies = [
+            { id: 1, name: '태평양종합건설(주)', taxId: '120-81-00000', representative: '김원청' },
+            { id: 2, name: '대명건설산업', taxId: '214-82-11111', representative: '이종합' }
+        ];
+
+        // 소속 현장 데이터
+        let sites = [
+            { id: 1, companyId: 1, name: '○○지구 도로개설공사 중 토공사', location: '원주시 일원', duration: '2025.01 ~ 2027.12' },
+            { id: 2, companyId: 1, name: '강원 바이오밸리 진입로 조성 공사', location: '원주시 지정면', duration: '2026.03 ~ 2028.06' },
+            { id: 3, companyId: 2, name: '서울 서부간선도로 구조보강공사', location: '서울 영등포구', duration: '2025.08 ~ 2029.12' }
+        ];
+
+        // 협력업체 데이터
+        let subcontractors = [
+            { id: 1, name: '(주)대한토건', taxId: '135-81-22222', representative: '홍길동' },
+            { id: 2, name: '한국개발건설(주)', taxId: '220-82-33333', representative: '박협력' },
+            { id: 3, name: '서우이앤씨', taxId: '107-86-44444', representative: '최토건' }
+        ];
+
+        // 선택 상태 추적 변수
+        let currentCompanyId = 1;
+        let currentSiteId = 1;
+        let currentSubcontractorId = 1;
+
+        // 세부 마스터 공종 리스트
+        let masterItems = [
+            { id: 1, category: '토공사', name: '토사 굴착', spec: '백호 0.8㎥', unit: '㎥', qty: 12000, price: 6500 },
+            { id: 2, category: '토공사', name: '사토 운반', spec: '덤프 15t', unit: '㎥', qty: 12000, price: 8200 },
+            { id: 3, category: '구조물공사', name: '옹벽 콘크리트', spec: '규격25-24-150', unit: '㎥', qty: 850, price: 98000 },
+            { id: 4, category: '구조물공사', name: '철근 가공 조립', spec: 'SD400 일반', unit: 'ton', qty: 45, price: 110000 },
+            { id: 5, category: '배수공', name: '콘크리트 흄관', spec: 'D600', unit: 'm', qty: 320, price: 42000 }
+        ];
+
+        // 회차별 기성 청구/사정 데이터베이스
+        let rounds = [
+            {
+                roundNumber: 1,
+                status: 'approved',
+                claims: {
+                    1: { curQty: 3000, appQty: 3000, adjustReason: '초기 실측 사정 완료' },
+                    2: { curQty: 2500, appQty: 2000, adjustReason: '실측 결과 삭정 조정' },
+                    3: { curQty: 200, appQty: 200, adjustReason: '' },
+                    4: { curQty: 10, appQty: 10, adjustReason: '' },
+                    5: { curQty: 60, appQty: 60, adjustReason: '' }
+                },
+                retentionRate: 5,
+                deductAdvance: 0,
+                deductSafety: 0,
+                deductFuel: 1500000,
+                deductMeal: 750000,
+                deductInsurance: 0,
+                deductPension: 0,
+                deductOthers: 0
+            },
+            {
+                roundNumber: 2,
+                status: 'reviewing',
+                claims: {
+                    1: { curQty: 4000, appQty: 3500, adjustReason: '일부 법면 굴착량 실측 정산' },
+                    2: { curQty: 4000, appQty: 3500, adjustReason: '운반 계량표 대조 조정' },
+                    3: { curQty: 300, appQty: 300, adjustReason: '' },
+                    4: { curQty: 15, appQty: 12, adjustReason: '할증량 일부 반려' },
+                    5: { curQty: 100, appQty: 100, adjustReason: '' }
+                },
+                retentionRate: 5,
+                deductAdvance: 5000000,
+                deductSafety: 1200000,
+                deductFuel: 2500000,
+                deductMeal: 1100000,
+                deductInsurance: 450000,
+                deductPension: 600000,
+                deductOthers: 150000
+            }
+        ];
+
+        // 월별 기성 시공 수량 데이터 구조 (1월 ~ 12월)
+        let monthlyData = {
+            1: { 1: 1500, 2: 1200, 3: 100, 4: 5, 5: 30 },
+            2: { 1: 1500, 2: 800, 3: 100, 4: 5, 5: 30 },
+            3: { 3: 100, 4: 5, 5: 30 },
+            4: { 4: 5, 5: 30 },
+            5: { 5: 30 }
+        };
+
+        let currentRoundNumber = 2;
+        let activeTab = 'document';
+        let currentFilter = 'ALL';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const date = String(today.getDate()).padStart(2, '0');
+            
+            document.getElementById('currentDateDisplay').textContent = `보고일자: ${year}년 ${month}월 ${date}일`;
+
+            // 마스터 드롭다운 세팅 및 동기화 초기화
+            initMasterSelectOptions();
+            refreshMasterRegistryLists();
+            renderRoundHistoryList();
+            renderTable();
+            renderMasterCategorySettings();
+            lucide.createIcons();
+
+            // 글로벌 단축키 Ctrl + V 감지 리스너 추가
+            document.addEventListener('paste', handleGlobalCtrlVPaste);
+        });
+
+        // 글로벌 붙여넣기 핫키 매핑 핸들러
+        function handleGlobalCtrlVPaste(e) {
+            const target = e.target;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pastedData = clipboardData.getData('Text');
+
+            if (pastedData && pastedData.trim()) {
+                const rows = pastedData.trim().split(/\r?\n/).map(line => line.split('\t'));
+                if (rows.length > 0 && rows[0].length >= 2) {
+                    e.preventDefault();
+                    openExcelPasteModal();
+                    const pasteTextarea = document.getElementById('excelPasteTextarea');
+                    pasteTextarea.value = pastedData;
+                    
+                    // 정합성 실시간 파싱 엔진 기동
+                    handleExcelPaste({ target: pasteTextarea });
+                    showNotification('엑셀 단축키 감지', '클립보드의 표 데이터를 감지하여 마스터 연동창을 열었습니다.', 'success');
+                }
+            }
+        }
+
+        // 엑셀 직접 붙여넣기 인풋 핸들러
+        function handleDirectPaste(e) {
+            e.preventDefault();
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pastedData = clipboardData.getData('Text');
+            
+            if (!pastedData || !pastedData.trim()) {
+                showNotification('복사 데이터 없음', '클립보드에 붙여넣을 데이터가 비어 있습니다.', 'warning');
+                return;
+            }
+
+            const rows = pastedData.trim().split(/\r?\n/).map(line => line.split('\t'));
+            let validCount = 0;
+            let tempItems = [...masterItems];
+            let startId = masterItems.length > 0 ? Math.max(...masterItems.map(i => i.id)) + 1 : 1;
+
+            rows.forEach(cols => {
+                if (cols.length < 2 || !cols[0].trim()) return;
+
+                const category = cols[0] ? cols[0].trim() : '공통공정';
+                const name = cols[1] ? cols[1].trim() : '세부공종 없음';
+                const spec = cols[2] ? cols[2].trim() : '-';
+                const textUnit = cols[3] ? cols[3].trim() : '-';
+                const qty = cols[4] ? Number(cols[4].replace(/,/g, '')) : 0;
+                const price = cols[5] ? Number(cols[5].replace(/,/g, '')) : 0;
+
+                if (!categories.includes(category)) {
+                    categories.push(category);
+                }
+
+                tempItems.push({
+                    id: startId++,
+                    category: category,
+                    name: name,
+                    spec: spec,
+                    unit: textUnit,
+                    qty: qty,
+                    price: price
+                });
+
+                validCount++;
+            });
+
+            if (validCount > 0) {
+                masterItems = tempItems;
+                
+                // 모든 회차 구조에 바인딩 동기화 적용
+                rounds.forEach(r => {
+                    masterItems.forEach(item => {
+                        if (!r.claims[item.id]) {
+                            r.claims[item.id] = { curQty: 0, appQty: 0, adjustReason: '' };
+                        }
+                    });
+                });
+
+                renderMasterCategorySettings();
+                renderTable();
+                
+                document.getElementById('directPasteInput').value = '';
+                showNotification('엑셀 즉시 연동 완료', `${validCount}개의 공종이 대장에 신속 등록되었습니다!`, 'success');
+            } else {
+                showNotification('파싱 실패', '엑셀 규격이 맞지 않습니다. (순서: 대분류, 공종명, 규격, 단위, 수량, 단가)', 'error');
+            }
+        }
+
+        // 탭 전환 제어 함수
+        function switchTab(tabId) {
+            activeTab = tabId;
+            
+            const tabKeys = ['document', 'monthly', 'dashboard', 'settings'];
+            tabKeys.forEach(key => {
+                const contentPane = document.getElementById(`tabContent-${key}`);
+                if (contentPane) {
+                    contentPane.classList.add('hidden');
+                }
+            });
+
+            const activePane = document.getElementById(`tabContent-${tabId}`);
+            if (activePane) {
+                activePane.classList.remove('hidden');
+            }
+
+            tabKeys.forEach(key => {
+                const btn = document.getElementById(`btnTab-${key}`);
+                if (btn) {
+                    btn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium hover:bg-slate-900 text-slate-400 transition";
+                }
+            });
+
+            const activeBtn = document.getElementById(`btnTab-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium bg-slate-800 text-white transition";
+            }
+
+            if (tabId === 'dashboard') {
+                renderDashboard();
+            } else if (tabId === 'monthly') {
+                renderMonthlyTable();
+            }
+        }
+
+        // 모바일 사이드바 활성화 여부 토글 제어
+        function toggleLeftSidebar() {
+            const sidebar = document.getElementById('leftSidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('-translate-x-full');
+            }
+        }
+
+        // 회차 리스트 단일 선택 핸들러
+        function selectRound(roundNum) {
+            currentRoundNumber = Number(roundNum);
+            renderRoundHistoryList();
+            
+            const currentRound = rounds.find(x => x.roundNumber === currentRoundNumber);
+            if (currentRound) {
+                document.getElementById('retentionRate').value = currentRound.retentionRate ?? 5;
+                document.getElementById('deductAdvance').value = currentRound.deductAdvance ?? 0;
+                document.getElementById('deductSafety').value = currentRound.deductSafety ?? 0;
+                document.getElementById('deductFuel').value = currentRound.deductFuel ?? 0;
+                document.getElementById('deductMeal').value = currentRound.deductMeal ?? 0;
+                document.getElementById('deductInsurance').value = currentRound.deductInsurance ?? 0;
+                document.getElementById('deductPension').value = currentRound.deductPension ?? 0;
+                document.getElementById('deductOthers').value = currentRound.deductOthers ?? 0;
+                
+                document.getElementById('settingsRetention').value = currentRound.retentionRate ?? 5;
+                
+                document.getElementById('docStatus').value = currentRound.status;
+                updateStatusStyle(currentRound.status);
+            }
+            renderTable();
+            
+            if (activeTab === 'dashboard') renderDashboard();
+            if (activeTab === 'monthly') renderMonthlyTable();
+
+            showNotification('회차 변경', `제 ${roundNum}회차 기성 내역으로 데이터가 전환되었습니다.`, 'success');
+        }
+
+        // 마스터 셀렉트 컴포넌트 옵션들 초기 주입
+        function initMasterSelectOptions() {
+            const clientSelect = document.getElementById('mainClientSelect');
+            clientSelect.innerHTML = '';
+            companies.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                clientSelect.appendChild(opt);
+            });
+            if (companies.length > 0) {
+                if (!currentCompanyId || !companies.some(c => c.id === currentCompanyId)) {
+                    currentCompanyId = companies[0].id;
+                }
+                clientSelect.value = currentCompanyId;
+            } else {
+                currentCompanyId = null;
+            }
+
+            filterSitesByCompany(currentCompanyId);
+
+            const subcontractorSelect = document.getElementById('mainSubcontractorSelect');
+            subcontractorSelect.innerHTML = '';
+            subcontractors.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                subcontractorSelect.appendChild(opt);
+            });
+            if (subcontractors.length > 0) {
+                if (!currentSubcontractorId || !subcontractors.some(s => s.id === currentSubcontractorId)) {
+                    currentSubcontractorId = subcontractors[0].id;
+                }
+                subcontractorSelect.value = currentSubcontractorId;
+            } else {
+                currentSubcontractorId = null;
+            }
+
+            updateSubcontractorRepName();
+            syncGnbAndSidebarLabels();
+        }
+
+        // 선택된 원청사 기준 현장들만 추려내어 동적 바인딩
+        function filterSitesByCompany(companyId) {
+            const projectSelect = document.getElementById('mainProjectSelect');
+            projectSelect.innerHTML = '';
+            if (!companyId) {
+                currentSiteId = null;
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.textContent = "소속 현장 없음";
+                projectSelect.appendChild(opt);
+                return;
+            }
+
+            const filtered = sites.filter(s => s.companyId === Number(companyId));
+            
+            filtered.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                projectSelect.appendChild(opt);
+            });
+
+            if (filtered.length > 0) {
+                if (!currentSiteId || !filtered.some(s => s.id === currentSiteId)) {
+                    currentSiteId = filtered[0].id;
+                }
+                projectSelect.value = currentSiteId;
+            } else {
+                currentSiteId = null;
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.textContent = "소속 현장 없음";
+                projectSelect.appendChild(opt);
+            }
+        }
+
+        function updateSubcontractorRepName() {
+            const sub = subcontractors.find(s => s.id === Number(currentSubcontractorId));
+            if (sub) {
+                document.getElementById('mainRepName').value = sub.representative;
+            } else {
+                document.getElementById('mainRepName').value = "-";
+            }
+        }
+
+        // 글로벌 탑 정보바 및 사이드바 텍스트 일체화
+        function syncGnbAndSidebarLabels() {
+            const comp = companies.find(c => c.id === Number(currentCompanyId));
+            const siteObj = sites.find(s => s.id === Number(currentSiteId));
+            const sub = subcontractors.find(s => s.id === Number(currentSubcontractorId));
+
+            document.getElementById('headerCompanyName').textContent = comp ? comp.name : "-";
+            document.getElementById('headerSiteName').textContent = siteObj ? siteObj.name : "현장 미정";
+            document.getElementById('headerSubcontractorName').textContent = sub ? sub.name : "-";
+            
+            document.getElementById('sidebarActiveProjectTitle').textContent = siteObj ? siteObj.name : "현장을 선택해 주세요";
+        }
+
+        // 메인 문서 원청사 드롭다운 전환 핸들러
+        function onCompanySelectChange(compId) {
+            currentCompanyId = Number(compId);
+            filterSitesByCompany(currentCompanyId);
+            syncGnbAndSidebarLabels();
+            showNotification('원청사 전환', '선택된 원청사 산하 소속 현장 리스트가 자동 동기화되었습니다.', 'success');
+        }
+
+        // 메인 문서 현장 드롭다운 전환 핸들러
+        function onSiteSelectChange(siteId) {
+            currentSiteId = Number(siteId);
+            syncGnbAndSidebarLabels();
+            showNotification('프로젝트 전환', '해당 현장의 기성 사정 대장으로 뷰가 이식되었습니다.', 'success');
+        }
+
+        // 메인 문서 협력사 드롭다운 전환 핸들러
+        function onSubcontractorSelectChange(subId) {
+            currentSubcontractorId = Number(subId);
+            updateSubcontractorRepName();
+            syncGnbAndSidebarLabels();
+            showNotification('협력사 전환', '협력업체 신원 및 기성 정산서가 연계되었습니다.', 'success');
+        }
+
+        // 숫자 3자리 쉼표 포맷팅
+        function formatNumber(num) {
+            if (num === null || num === undefined || isNaN(num)) return "0";
+            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // 커스텀 메시지 출력 시스템
+        function showNotification(title, desc, status = 'success') {
+            const notification = document.getElementById('systemNotification');
+            const titleEl = document.getElementById('sysNotifyTitle');
+            const descEl = document.getElementById('sysNotifyDesc');
+            const iconContainer = document.getElementById('sysNotifyIcon');
+
+            titleEl.textContent = title;
+            descEl.textContent = desc;
+
+            if (status === 'success') {
+                iconContainer.className = "p-1 rounded-full bg-emerald-500 text-white";
+                iconContainer.innerHTML = '<i data-lucide="check-circle-2" class="w-4 h-4"></i>';
+            } else if (status === 'warning') {
+                iconContainer.className = "p-1 rounded-full bg-amber-500 text-white";
+                iconContainer.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4"></i>';
+            } else {
+                iconContainer.className = "p-1 rounded-full bg-rose-500 text-white";
+                iconContainer.innerHTML = '<i data-lucide="shield-alert" class="w-4 h-4"></i>';
+            }
+
+            lucide.createIcons();
+
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                notification.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => {
+                    notification.classList.add('hidden');
+                }, 300);
+            }, 3500);
+        }
+
+        // 커스텀 공용 확인 모달 활성화
+        let currentConfirmCallback = null;
+        function openConfirmModal(title, desc, callback, isDanger = true) {
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmDesc').textContent = desc;
+            
+            const iconBox = document.getElementById('confirmIconContainer');
+            const execBtn = document.getElementById('confirmExecuteBtn');
+
+            if (isDanger) {
+                iconBox.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-100 text-rose-600 mb-4";
+                iconBox.innerHTML = '<i data-lucide="alert-triangle" class="h-6 w-6"></i>';
+                execBtn.className = "px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow";
+            } else {
+                iconBox.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600 mb-4";
+                iconBox.innerHTML = '<i data-lucide="help-circle" class="h-6 w-6"></i>';
+                execBtn.className = "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow";
+            }
+
+            currentConfirmCallback = callback;
+            document.getElementById('confirmModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            currentConfirmCallback = null;
+        }
+
+        document.getElementById('confirmExecuteBtn').onclick = function() {
+            if (currentConfirmCallback) {
+                currentConfirmCallback();
+            }
+            closeConfirmModal();
+        };
+
+        // 마스터 설정 탭 내 리스트들 통합 갱신
+        function refreshMasterRegistryLists() {
+            const compList = document.getElementById('companyRegistryList');
+            document.getElementById('companyRegistryCount').textContent = `${companies.length}개`;
+            compList.innerHTML = '';
+            
+            companies.forEach(c => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg text-xs hover:bg-slate-50";
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold text-slate-800">${c.name}</p>
+                        <p class="text-[10px] text-slate-400">대표자: ${c.representative}</p>
+                    </div>
+                    <button onclick="deleteCompanyFromRegistry(${c.id})" class="p-1 text-rose-500 hover:bg-rose-50 rounded transition" title="원청사 삭제">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                compList.appendChild(div);
+            });
+
+            const siteList = document.getElementById('siteRegistryList');
+            document.getElementById('siteRegistryCount').textContent = `${sites.length}개`;
+            siteList.innerHTML = '';
+            
+            sites.forEach(s => {
+                const linkedCompany = companies.find(c => c.id === s.companyId);
+                const compName = linkedCompany ? linkedCompany.name : "미지정 원청";
+
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg text-xs hover:bg-slate-50";
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold text-slate-800">${s.name}</p>
+                        <p class="text-[10px] text-slate-400">소속: ${compName}</p>
+                    </div>
+                    <button onclick="deleteSiteFromRegistry(${s.id})" class="p-1 text-rose-500 hover:bg-rose-50 rounded transition" title="현장 삭제">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                siteList.appendChild(div);
+            });
+
+            const subList = document.getElementById('subconRegistryList');
+            document.getElementById('subconRegistryCount').textContent = `${subcontractors.length}개`;
+            subList.innerHTML = '';
+            
+            subcontractors.forEach(s => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg text-xs hover:bg-slate-50";
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold text-slate-800">${s.name}</p>
+                        <p class="text-[10px] text-slate-400">대표: ${s.representative}</p>
+                    </div>
+                    <button onclick="deleteSubcontractorFromRegistry(${s.id})" class="p-1 text-rose-500 hover:bg-rose-50 rounded transition" title="협력사 삭제">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                subList.appendChild(div);
+            });
+
+            const regSiteCompIdSelect = document.getElementById('regSiteCompId');
+            regSiteCompIdSelect.innerHTML = '';
+            companies.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                regSiteCompIdSelect.appendChild(opt);
+            });
+
+            lucide.createIcons();
+        }
+
+        // 신규 원청사 마스터 등록
+        function registerNewCompany() {
+            const name = document.getElementById('regCompName').value.trim();
+            const rep = document.getElementById('regCompRep').value.trim();
+
+            if (!name || !rep) {
+                showNotification('등록 불가', '상호명과 대표자명을 올바르게 모두 기입해 주세요.', 'warning');
+                return;
+            }
+
+            const nextId = companies.length > 0 ? Math.max(...companies.map(c => c.id)) + 1 : 1;
+            companies.push({ id: nextId, name: name, taxId: '-', representative: rep });
+
+            document.getElementById('regCompName').value = '';
+            document.getElementById('regCompRep').value = '';
+
+            refreshMasterRegistryLists();
+            initMasterSelectOptions();
+            showNotification('원청사 신규 등록', `[${name}]이 원청 마스터 목록에 안전하게 추가되었습니다.`, 'success');
+        }
+
+        // 등록 원청사 마스터 삭제
+        function deleteCompanyFromRegistry(id) {
+            const comp = companies.find(c => c.id === id);
+            if (!comp) return;
+
+            const linkedCount = sites.filter(s => s.companyId === id).length;
+            if (linkedCount > 0) {
+                showNotification('삭제 거절', `이 원청사에 소속된 현장이 ${linkedCount}개 등록되어 있어 강제 삭제가 보류되었습니다.`, 'warning');
+                return;
+            }
+
+            openConfirmModal(
+                '원청사 마스터 데이터 제거',
+                `[${comp.name}]을 원청사 목록에서 삭제하시겠습니까? 관련 양식 목록에서 더 이상 조회되지 않습니다.`,
+                function() {
+                    companies = companies.filter(c => c.id !== id);
+                    if (currentCompanyId === id) {
+                        currentCompanyId = companies.length > 0 ? companies[0].id : null;
+                    }
+                    refreshMasterRegistryLists();
+                    initMasterSelectOptions();
+                    showNotification('삭제 완료', '원청사 정보가 데이터베이스에서 제거되었습니다.', 'success');
+                }
+            );
+        }
+
+        // 신규 현장 마스터 등록
+        function registerNewSite() {
+            const compId = Number(document.getElementById('regSiteCompId').value);
+            const name = document.getElementById('regSiteName').value.trim();
+
+            if (!compId || !name) {
+                showNotification('등록 불가', '상위 소속 원청사와 현장 프로젝트명을 모두 지정해 주세요.', 'warning');
+                return;
+            }
+
+            const nextId = sites.length > 0 ? Math.max(...sites.map(s => s.id)) + 1 : 1;
+            sites.push({ id: nextId, companyId: compId, name: name, location: '-', duration: '-' });
+
+            document.getElementById('regSiteName').value = '';
+
+            refreshMasterRegistryLists();
+            initMasterSelectOptions();
+            showNotification('현장 등록 완료', `신규 프로젝트 [${name}]가 해당 원청사 산하로 배정되었습니다.`, 'success');
+        }
+
+        // 등록 현장 마스터 삭제
+        function deleteSiteFromRegistry(id) {
+            const siteObj = sites.find(s => s.id === id);
+            if (!siteObj) return;
+
+            openConfirmModal(
+                '현장 마스터 데이터 제거',
+                `[${siteObj.name}] 프로젝트를 정말로 파기하시겠습니까?`,
+                function() {
+                    sites = sites.filter(s => s.id !== id);
+                    if (currentSiteId === id) {
+                        currentSiteId = sites.length > 0 ? sites[0].id : null;
+                    }
+                    refreshMasterRegistryLists();
+                    initMasterSelectOptions();
+                    showNotification('삭제 완료', '현장 원장이 제거되었습니다.', 'success');
+                }
+            );
+        }
+
+        // 신규 협력업체 등록
+        function registerNewSubcontractor() {
+            const name = document.getElementById('regSubName').value.trim();
+            const rep = document.getElementById('regSubRep').value.trim();
+
+            if (!name || !rep) {
+                showNotification('등록 불가', '협력사명과 상호 대표자를 입력하십시오.', 'warning');
+                return;
+            }
+
+            const nextId = subcontractors.length > 0 ? Math.max(...subcontractors.map(s => s.id)) + 1 : 1;
+            subcontractors.push({ id: nextId, name: name, taxId: '-', representative: rep });
+
+            document.getElementById('regSubName').value = '';
+            document.getElementById('regSubRep').value = '';
+
+            refreshMasterRegistryLists();
+            initMasterSelectOptions();
+            showNotification('협력사 등록 완료', `[${name}] 협력사가 등록되었습니다. 기성청구 양식 내에서 선택하여 적용하십시오.`, 'success');
+        }
+
+        // 등록 협력사 마스터 삭제
+        function deleteSubcontractorFromRegistry(id) {
+            const sub = subcontractors.find(s => s.id === id);
+            if (!sub) return;
+
+            openConfirmModal(
+                '협력사 정보 영구 삭제',
+                `[${sub.name}] 협력사 마스터 데이터를 제거하시겠습니까?`,
+                function() {
+                    subcontractors = subcontractors.filter(s => s.id !== id);
+                    if (currentSubcontractorId === id) {
+                        currentSubcontractorId = subcontractors.length > 0 ? subcontractors[0].id : null;
+                    }
+                    refreshMasterRegistryLists();
+                    initMasterSelectOptions();
+                    showNotification('삭제 완료', '지정 협력업체가 마스터에서 완전 삭제되었습니다.', 'success');
+                }
+            );
+        }
+
+        // 엑셀 일괄 등록용 모달 활성화
+        function openExcelPasteModal() {
+            document.getElementById('excelPasteTextarea').value = '';
+            document.getElementById('excelPreviewBody').innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-12 text-slate-400 italic text-center">여기에 복사한 엑셀 데이터를 붙여넣기 해주세요.</td>
+                </tr>
+            `;
+            document.getElementById('excelParsedCount').textContent = '대기 중...';
+            document.getElementById('excelPasteModal').classList.remove('hidden');
+        }
+
+        function closeExcelPasteModal() {
+            document.getElementById('excelPasteModal').classList.add('hidden');
+        }
+
+        // 엑셀에서 복사해온 클립보드 문자열 정밀 파싱 제어
+        function handleExcelPaste(e) {
+            const text = e.target.value || e.target;
+            const previewBody = document.getElementById('excelPreviewBody');
+            const countEl = document.getElementById('excelParsedCount');
+            previewBody.innerHTML = '';
+
+            const textValue = (typeof text === 'string') ? text : text.value;
+
+            if (!textValue || !textValue.trim()) {
+                previewBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-12 text-slate-400 italic text-center">여기에 복사한 엑셀 데이터를 붙여넣기 해주세요.</td>
+                    </tr>
+                `;
+                countEl.textContent = '대기 중...';
+                return;
+            }
+
+            const rows = textValue.trim().split(/\r?\n/).map(line => line.split('\t'));
+            let validCount = 0;
+            let html = '';
+
+            rows.forEach((cols, idx) => {
+                if (cols.length < 2 || !cols[0].trim()) return;
+
+                const category = cols[0] ? cols[0].trim() : '공통공정';
+                const name = cols[1] ? cols[1].trim() : '세부공종 없음';
+                const spec = cols[2] ? cols[2].trim() : '-';
+                const textUnit = cols[3] ? cols[3].trim() : '-';
+                const qty = cols[4] ? Number(cols[4].replace(/,/g, '')) : 0;
+                const price = cols[5] ? Number(cols[5].replace(/,/g, '')) : 0;
+
+                validCount++;
+                html += `
+                    <tr class="border-b border-slate-100 text-[11px] hover:bg-slate-50 text-slate-600">
+                        <td class="p-2 font-bold bg-slate-50 text-slate-500">${idx + 1}</td>
+                        <td class="p-2 text-left">${category}</td>
+                        <td class="p-2 text-left font-semibold text-slate-800">${name}</td>
+                        <td class="p-2">${spec}</td>
+                        <td class="p-2">${textUnit}</td>
+                        <td class="p-2 text-right font-medium text-slate-700">${formatNumber(qty)}</td>
+                        <td class="p-2 text-right font-medium text-slate-700">${formatNumber(price)}</td>
+                    </tr>
+                `;
+            });
+
+            if (validCount === 0) {
+                previewBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-12 text-rose-500 italic text-center">정합성에 일치하는 올바른 토목 기성 데이터를 파싱할 수 없습니다. 컬럼 순서를 확인해 주세요.</td>
+                    </tr>
+                `;
+                countEl.textContent = '파싱 오류';
+            } else {
+                previewBody.innerHTML = html;
+                countEl.textContent = `파싱 성공: 총 ${validCount}개의 유효한 공종 감지됨`;
+            }
+        }
+
+        // 검증된 파싱 결과물을 메인 기성대장 원장에 이식 및 자동 회차 정합성 보완
+        function importExcelData() {
+            const text = document.getElementById('excelPasteTextarea').value;
+            if (!text.trim()) {
+                showNotification('데이터가 없습니다', '붙여넣을 엑셀 데이터를 먼저 입력하십시오.', 'warning');
+                return;
+            }
+
+            const importMode = document.querySelector('input[name="excelImportMode"]:checked').value;
+            const rows = text.trim().split(/\r?\n/).map(line => line.split('\t'));
+
+            let tempItems = [];
+            let startId = 1;
+
+            if (importMode === 'append') {
+                tempItems = [...masterItems];
+                startId = masterItems.length > 0 ? Math.max(...masterItems.map(i => i.id)) + 1 : 1;
+            } else {
+                categories = [];
+            }
+
+            let insertedCount = 0;
+
+            rows.forEach(cols => {
+                if (cols.length < 2 || !cols[0].trim()) return;
+
+                const category = cols[0] ? cols[0].trim() : '공통공정';
+                const name = cols[1] ? cols[1].trim() : '세부공종 없음';
+                const spec = cols[2] ? cols[2].trim() : '-';
+                const textUnit = cols[3] ? cols[3].trim() : '-';
+                const qty = cols[4] ? Number(cols[4].replace(/,/g, '')) : 0;
+                const price = cols[5] ? Number(cols[5].replace(/,/g, '')) : 0;
+
+                if (!categories.includes(category)) {
+                    categories.push(category);
+                }
+
+                tempItems.push({
+                    id: startId++,
+                    category: category,
+                    name: name,
+                    spec: spec,
+                    unit: textUnit,
+                    qty: qty,
+                    price: price
+                });
+
+                insertedCount++;
+            });
+
+            masterItems = tempItems;
+
+            rounds.forEach(r => {
+                masterItems.forEach(item => {
+                    if (!r.claims[item.id]) {
+                        r.claims[item.id] = { curQty: 0, appQty: 0, adjustReason: '' };
+                    }
+                });
+            });
+
+            renderMasterCategorySettings();
+            closeExcelPasteModal();
+            renderTable();
+
+            showNotification(
+                '내역 데이터 연동 완료',
+                `${insertedCount}개의 공종이 ${importMode === 'overwrite' ? '완전 새로고침 대체' : '추가 등록'} 되었습니다.`,
+                'success'
+            );
+        }
+
+        // 좌측 메뉴 회차 선택 리스트 갱신
+        function renderRoundHistoryList() {
+            const container = document.getElementById('roundHistoryList');
+            container.innerHTML = '';
+
+            rounds.forEach(r => {
+                const isSelected = r.roundNumber === currentRoundNumber;
+                const statusBadge = r.status === 'approved' ? '✅' : '🔍';
+                
+                const btn = document.createElement('button');
+                btn.onclick = () => selectRound(r.roundNumber);
+                btn.className = `w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition ${
+                    isSelected 
+                        ? 'bg-blue-600 text-white shadow' 
+                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+                }`;
+                btn.innerHTML = `
+                    <span>${statusBadge} 제 ${r.roundNumber}회차 기성</span>
+                    <span class="text-[9px] ${isSelected ? 'text-white' : 'text-slate-500'} font-bold">선택조회</span>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        // 순차 이월을 지원하는 신규 기성회차 생성 엔진
+        function createNewSequentialRound() {
+            const lastRound = rounds[rounds.length - 1];
+            const nextRoundNum = lastRound.roundNumber + 1;
+
+            const newRoundObj = {
+                roundNumber: nextRoundNum,
+                status: 'reviewing',
+                claims: {},
+                retentionRate: lastRound.retentionRate ?? 5,
+                deductAdvance: 0,
+                deductSafety: 0,
+                deductFuel: 0,
+                deductMeal: 0,
+                deductInsurance: 0,
+                deductPension: 0,
+                deductOthers: 0
+            };
+
+            masterItems.forEach(item => {
+                newRoundObj.claims[item.id] = { curQty: 0, appQty: 0, adjustReason: '' };
+            });
+
+            rounds.push(newRoundObj);
+
+            renderRoundHistoryList();
+            selectRound(nextRoundNum);
+
+            showNotification('회차 순차 생성', `제 ${nextRoundNum}회차 정산 원장이 안정적으로 자동 상속/이월 생성되었습니다.`, 'success');
+        }
+
+        // 특정 아이템의 특정 회차 이전까지의 누적 승인량 계산
+        function getPrevAccumQty(itemId, targetRoundNum) {
+            let sum = 0;
+            for (let r = 1; r < targetRoundNum; r++) {
+                const round = rounds.find(x => x.roundNumber === r);
+                if (round && round.claims && round.claims[itemId]) {
+                    sum += round.claims[itemId].appQty || 0;
+                }
+            }
+            return sum;
+        }
+
+        function updateStatusStyle(val) {
+            const badge = document.getElementById('printStatusBadge');
+            const roundData = rounds.find(x => x.roundNumber === currentRoundNumber);
+            if (roundData) roundData.status = val;
+
+            if (val === 'approved') {
+                badge.textContent = `[제 ${currentRoundNumber}회차 최종 사정 승인 완료]`;
+                badge.className = "hidden print:inline-block px-3 py-1 border border-emerald-600 bg-emerald-50 text-emerald-800 font-bold rounded-md text-xs uppercase mb-2";
+            } else if (val === 'adjusted') {
+                badge.textContent = `[제 ${currentRoundNumber}회차 사정조정 완료]`;
+                badge.className = "hidden print:inline-block px-3 py-1 border border-amber-600 bg-amber-50 text-amber-800 font-bold rounded-md text-xs uppercase mb-2";
+            } else {
+                badge.textContent = `[제 ${currentRoundNumber}회차 실측 사정 검토 중]`;
+                badge.className = "hidden print:inline-block px-3 py-1 border border-slate-600 bg-slate-50 text-slate-800 font-bold rounded-md text-xs uppercase mb-2";
+            }
+            renderRoundHistoryList();
+        }
+
+        function filterCategory(cat) {
+            currentFilter = cat;
+            renderTable();
+        }
+
+        // 금액 수량을 받았을 때 상호 역산 연산 엔진
+        function updateBidirectionalClaim(itemId, type, mode, val) {
+            const item = masterItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            const round = rounds.find(x => x.roundNumber === currentRoundNumber);
+            if (!round) return;
+
+            if (!round.claims[itemId]) {
+                round.claims[itemId] = { curQty: 0, appQty: 0, adjustReason: '' };
+            }
+
+            const inputNum = (val === '' || isNaN(val)) ? 0 : Number(val);
+
+            if (mode === 'qty') {
+                if (type === 'cur') {
+                    round.claims[itemId].curQty = inputNum;
+                } else {
+                    round.claims[itemId].appQty = inputNum;
+                }
+            } else if (mode === 'amt') {
+                const computedQty = item.price > 0 ? Math.round((inputNum / item.price) * 100) / 100 : 0;
+                if (type === 'cur') {
+                    round.claims[itemId].curQty = computedQty;
+                } else {
+                    round.claims[itemId].appQty = computedQty;
+                }
+            }
+            renderTable();
+        }
+
+        // 사유 기록 수정 제어 핸들러
+        function updateClaimValue(itemId, field, val) {
+            const round = rounds.find(x => x.roundNumber === currentRoundNumber);
+            if (round && round.claims[itemId]) {
+                round.claims[itemId][field] = val;
+            }
+        }
+
+        // 메인 데이터 그리드 렌더링
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            const currentRound = rounds.find(x => x.roundNumber === currentRoundNumber);
+            if (!currentRound) return;
+
+            document.getElementById('sidebarClaimRound').textContent = `제 ${currentRoundNumber}회차 기성`;
+            document.getElementById('headerRoundTitle').textContent = `제 ${currentRoundNumber}회차`;
+            document.getElementById('contentRoundText').textContent = `제 ${currentRoundNumber}회차 기성 사정`;
+
+            let sumContractAmt = 0;
+            let sumPrevAmt = 0;
+            let sumSubClaimAmt = 0;
+            let sumGCApprovedAmt = 0;
+            let sumAccumAmt = 0;
+
+            let overClaimCount = 0;
+            let adjustedQtyCount = 0;
+
+            const adjustedListContainer = document.getElementById('adjustedList');
+            adjustedListContainer.innerHTML = '';
+
+            const activeCategories = currentFilter === 'ALL' ? categories : [currentFilter];
+
+            activeCategories.forEach(cat => {
+                const catItems = masterItems.filter(item => item.category === cat);
+                if (catItems.length === 0) return;
+
+                let catContract = 0;
+                let catPrev = 0;
+                let catClaim = 0;
+                let catApproved = 0;
+                let catAccum = 0;
+
+                const headerTr = document.createElement('tr');
+                headerTr.className = "bg-slate-200/80 font-black text-left h-8 text-slate-800";
+                headerTr.innerHTML = `
+                    <td colspan="18" class="px-4 border-b border-slate-300">
+                        <span class="flex items-center gap-1.5 text-[11px] uppercase tracking-wide">
+                            <i data-lucide="folder" class="w-3.5 h-3.5 text-slate-600"></i>
+                            ${cat} 공정 소계 그룹
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(headerTr);
+
+                catItems.forEach((item, index) => {
+                    if (!currentRound.claims[item.id]) {
+                        currentRound.claims[item.id] = { curQty: 0, appQty: 0, adjustReason: '' };
+                    }
+                    const claim = currentRound.claims[item.id];
+
+                    const contractAmt = item.qty * item.price;
+                    const prevQty = getPrevAccumQty(item.id, currentRoundNumber);
+                    const prevAmt = prevQty * item.price;
+                    const subClaimAmt = claim.curQty * item.price;
+                    const gcApprovedAmt = claim.appQty * item.price;
+                    const accumQty = prevQty + claim.appQty;
+                    const accumAmt = prevAmt + gcApprovedAmt;
+                    const progressRate = item.qty > 0 ? ((accumQty / item.qty) * 100).toFixed(1) : 0;
+
+                    catContract += contractAmt;
+                    catPrev += prevAmt;
+                    catClaim += subClaimAmt;
+                    catApproved += gcApprovedAmt;
+                    catAccum += accumAmt;
+
+                    sumContractAmt += contractAmt;
+                    sumPrevAmt += prevAmt;
+                    sumSubClaimAmt += subClaimAmt;
+                    sumGCApprovedAmt += gcApprovedAmt;
+                    sumAccumAmt += accumAmt;
+
+                    const isOverClaim = (prevQty + claim.curQty) > item.qty;
+                    if (isOverClaim) overClaimCount++;
+
+                    const isAdjusted = claim.curQty !== claim.appQty;
+                    if (isAdjusted) {
+                        adjustedQtyCount++;
+                        const adjustDiv = document.createElement('div');
+                        adjustDiv.className = 'p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900';
+                        adjustDiv.innerHTML = `
+                            <div class="font-bold">${item.name}</div>
+                            <div class="flex justify-between mt-0.5 text-[10px] text-slate-500">
+                                <span>청구: ${formatNumber(claim.curQty)} → 사정: ${formatNumber(claim.appQty)}</span>
+                                <span class="text-rose-600 font-bold">-${formatNumber((claim.curQty - claim.appQty) * item.price)}원</span>
+                            </div>
+                        `;
+                        adjustedListContainer.appendChild(adjustDiv);
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = `border-b border-slate-200 hover:bg-slate-50 h-10 transition-all ${
+                        isOverClaim ? 'bg-red-50/70 hover:bg-red-50' : isAdjusted ? 'bg-amber-50/50 hover:bg-amber-50/70' : ''
+                    }`;
+                    
+                    tr.innerHTML = `
+                        <td class="border-r border-slate-200 bg-slate-50 font-semibold">${index + 1}</td>
+                        <td class="border-r border-slate-200 p-1 text-left">
+                            <input type="text" value="${item.name}" onchange="updateMasterItem(${item.id}, 'name', this.value)" class="w-full px-1 py-0.5 border border-transparent focus:border-blue-500 focus:bg-white rounded outline-none bg-transparent font-medium text-xs">
+                        </td>
+                        <td class="border-r border-slate-200 p-1">
+                            <input type="text" value="${item.spec}" onchange="updateMasterItem(${item.id}, 'spec', this.value)" class="w-full text-center py-0.5 border border-transparent focus:border-blue-500 focus:bg-white rounded outline-none bg-transparent text-xs">
+                        </td>
+                        <td class="border-r border-slate-200 p-1">
+                            <input type="text" value="${item.unit}" onchange="updateMasterItem(${item.id}, 'unit', this.value)" class="w-full text-center py-0.5 border border-transparent focus:border-blue-500 focus:bg-white rounded outline-none bg-transparent text-xs">
+                        </td>
+                        
+                        <td class="border-r border-slate-200 p-1 bg-slate-50/30">
+                            <input type="number" value="${item.qty}" onchange="updateMasterItem(${item.id}, 'qty', Number(this.value))" class="w-full text-right py-0.5 border border-transparent focus:border-blue-500 focus:bg-white rounded outline-none bg-transparent font-medium text-xs">
+                        </td>
+                        <td class="border-r border-slate-200 p-1 bg-slate-50/30">
+                            <input type="number" value="${item.price}" onchange="updateMasterItem(${item.id}, 'price', Number(this.value))" class="w-full text-right py-0.5 border border-transparent focus:border-blue-500 focus:bg-white rounded outline-none bg-transparent text-xs">
+                        </td>
+                        <td class="border-r border-slate-200 text-right px-1.5 font-semibold bg-slate-100/50 text-xs">${formatNumber(contractAmt)}</td>
+                        
+                        <td class="border-r border-slate-200 text-right px-2 bg-slate-100/80 font-bold text-slate-600 text-xs">${formatNumber(prevQty)}</td>
+                        <td class="border-r border-slate-200 text-right px-1.5 bg-slate-100/80 text-slate-600 text-xs">${formatNumber(prevAmt)}</td>
+                        
+                        <td class="border-r border-slate-200 p-1 bg-blue-50/10">
+                            <input type="number" value="${claim.curQty}" onchange="updateBidirectionalClaim(${item.id}, 'cur', 'qty', this.value)" class="w-full text-right py-0.5 border-b border-dashed border-blue-200 focus:border-blue-500 focus:bg-white rounded outline-none bg-transparent font-bold text-blue-700 text-xs">
+                        </td>
+                        <td class="border-r border-slate-200 p-1 bg-blue-50/10">
+                            <input type="number" value="${subClaimAmt}" onchange="updateBidirectionalClaim(${item.id}, 'cur', 'amt', this.value)" class="w-full text-right py-0.5 border-b border-dashed border-blue-200 focus:border-blue-500 focus:bg-white rounded outline-none bg-transparent font-bold text-blue-800 text-xs">
+                        </td>
+                        
+                        <td class="border-r border-slate-200 p-1 bg-emerald-50/20">
+                            <input type="number" value="${claim.appQty}" onchange="updateBidirectionalClaim(${item.id}, 'app', 'qty', this.value)" class="w-full text-right py-0.5 border-b border-dashed border-emerald-200 focus:border-emerald-500 focus:bg-white rounded outline-none bg-transparent font-black text-emerald-800 text-xs">
+                        </td>
+                        <td class="border-r border-slate-200 p-1 bg-emerald-50/20">
+                            <input type="number" value="${gcApprovedAmt}" onchange="updateBidirectionalClaim(${item.id}, 'app', 'amt', this.value)" class="w-full text-right py-0.5 border-b border-dashed border-emerald-200 focus:border-emerald-500 focus:bg-white rounded outline-none bg-transparent font-black text-emerald-900 text-xs">
+                        </td>
+                        <td class="border-r border-slate-200 text-center font-bold text-slate-800 bg-slate-50/50 text-xs">${progressRate}%</td>
+                        
+                        <td class="border-r border-slate-200 text-right px-1.5 bg-slate-50/30 text-xs">${formatNumber(accumQty)}</td>
+                        <td class="border-r border-slate-200 text-right px-1.5 font-bold bg-slate-50/30 text-xs">${formatNumber(accumAmt)}</td>
+                        
+                        <td class="border-r border-slate-200 p-1 text-left">
+                            <input type="text" value="${claim.adjustReason || ''}" placeholder="의견 기록" onchange="updateClaimValue(${item.id}, 'adjustReason', this.value)" class="w-full px-1 py-0.5 text-[10px] border border-transparent focus:border-slate-400 focus:bg-white rounded outline-none bg-transparent text-slate-600">
+                        </td>
+                        <td class="no-print p-1">
+                            <button onclick="openDeleteModal(${item.id})" class="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition" title="공종 삭제">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5 mx-auto"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                const catProgressRate = catContract > 0 ? ((catAccum / catContract) * 100).toFixed(1) : 0;
+                const subTotalTr = document.createElement('tr');
+                subTotalTr.className = "bg-slate-100 font-bold border-t border-slate-300 h-9 text-slate-800 text-[10px]";
+                subTotalTr.innerHTML = `
+                    <td colspan="4" class="text-center border-r border-slate-200 bg-slate-100 font-extrabold">▶ [${cat}] 공정 소계</td>
+                    <td class="border-r border-slate-200"></td>
+                    <td class="border-r border-slate-200"></td>
+                    <td class="text-right px-1.5 border-r border-slate-200 bg-slate-50/60">${formatNumber(catContract)}</td>
+                    <td class="border-r border-slate-200 bg-slate-100/50"></td>
+                    <td class="text-right px-1.5 border-r border-slate-200 bg-slate-100/80">${formatNumber(catPrev)}</td>
+                    <td class="border-r border-slate-200 bg-blue-50/10"></td>
+                    <td class="text-right px-1.5 border-r border-slate-200 bg-blue-50/20 text-blue-900">${formatNumber(catClaim)}</td>
+                    <td class="border-r border-slate-200 bg-emerald-50/10"></td>
+                    <td class="text-right px-1.5 border-r border-slate-200 bg-emerald-50/20 text-emerald-950">${formatNumber(catApproved)}</td>
+                    <td class="text-center border-r border-slate-200 bg-emerald-50/10 font-bold text-emerald-800">${catProgressRate}%</td>
+                    <td class="border-r border-slate-200"></td>
+                    <td class="text-right px-1.5 border-r border-slate-200 bg-slate-50/60">${formatNumber(catAccum)}</td>
+                    <td class="border-r border-slate-200"></td>
+                    <td class="no-print"></td>
+                `;
+                tbody.appendChild(subTotalTr);
+            });
+
+            document.getElementById('sumContractAmt').textContent = formatNumber(sumContractAmt);
+            document.getElementById('sumPrevAmt').textContent = formatNumber(sumPrevAmt);
+            document.getElementById('sumSubClaimAmt').textContent = formatNumber(sumSubClaimAmt);
+            document.getElementById('sumGCApprovedAmt').textContent = formatNumber(sumGCApprovedAmt);
+            document.getElementById('sumAccumAmt').textContent = formatNumber(sumAccumAmt);
+
+            document.getElementById('sidebarTotalApproved').textContent = `₩ ${formatNumber(sumGCApprovedAmt)}`;
+
+            const overClaimCard = document.getElementById('overClaimIndicator');
+            if (overClaimCount > 0) {
+                overClaimCard.className = 'mt-1.5 p-2.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-900 text-[11px] font-semibold flex items-center justify-between';
+                overClaimCard.innerHTML = `
+                    <span>계약한도 초과 기성 검출!</span>
+                    <span class="px-2 py-0.5 bg-rose-600 text-white rounded text-[10px] font-black">${overClaimCount}건</span>
+                `;
+            } else {
+                overClaimCard.className = 'mt-1.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-[11px]';
+                overClaimCard.innerHTML = `<span>안전 (위반 초과수량 발견 안됨)</span>`;
+            }
+
+            if (adjustedQtyCount === 0) {
+                adjustedListContainer.innerHTML = `<div class="text-[10px] text-slate-400 italic">금회 사정 변경 조치된 항목이 없습니다.</div>`;
+            }
+
+            const retentionRate = Number(document.getElementById('retentionRate').value) / 100;
+            const retentionAmount = sumGCApprovedAmt * retentionRate;
+            
+            const deductAdvance = Number(document.getElementById('deductAdvance').value);
+            const deductSafety = Number(document.getElementById('deductSafety').value);
+            const deductFuel = Number(document.getElementById('deductFuel').value);
+            const deductMeal = Number(document.getElementById('deductMeal').value);
+            const deductInsurance = Number(document.getElementById('deductInsurance').value);
+            const deductPension = Number(document.getElementById('deductPension').value);
+            const deductOthers = Number(document.getElementById('deductOthers').value);
+            
+            const totalDeductions = retentionAmount + deductAdvance + deductSafety + deductFuel + deductMeal + deductInsurance + deductPension + deductOthers;
+            const netPayout = sumGCApprovedAmt - totalDeductions;
+
+            document.getElementById('totalGCApprovedAmtDisplay').textContent = `₩ ${formatNumber(sumGCApprovedAmt)}`;
+            document.getElementById('calcApproved').textContent = `₩ ${formatNumber(sumGCApprovedAmt)}`;
+            document.getElementById('calcRetention').textContent = `(-) ₩ ${formatNumber(retentionAmount)}`;
+            document.getElementById('calcDeductAdvance').textContent = `(-) ₩ ${formatNumber(deductAdvance)}`;
+            document.getElementById('calcDeductSafety').textContent = `(-) ₩ ${formatNumber(deductSafety)}`;
+            document.getElementById('calcDeductFuel').textContent = `(-) ₩ ${formatNumber(deductFuel)}`;
+            document.getElementById('calcDeductMeal').textContent = `(-) ₩ ${formatNumber(deductMeal)}`;
+            document.getElementById('calcDeductEtc').textContent = `(-) ₩ ${formatNumber(deductInsurance + deductPension)}`;
+            document.getElementById('calcDeductOthers').textContent = `(-) ₩ ${formatNumber(deductOthers)}`;
+            document.getElementById('calcNetPayout').textContent = `₩ ${formatNumber(netPayout)}`;
+
+            document.getElementById('kpiContractAmt').textContent = `₩ ${formatNumber(sumContractAmt)}`;
+            document.getElementById('kpiClaimAmt').textContent = `₩ ${formatNumber(sumSubClaimAmt)}`;
+            document.getElementById('kpiApprovedAmt').textContent = `₩ ${formatNumber(sumGCApprovedAmt)}`;
+            document.getElementById('kpiNetPayout').textContent = `₩ ${formatNumber(netPayout)}`;
+
+            document.getElementById('quickApproved').textContent = `₩ ${formatNumber(sumGCApprovedAmt)}`;
+            document.getElementById('quickDeduction').textContent = `₩ ${formatNumber(totalDeductions)}`;
+            document.getElementById('quickNet').textContent = `₩ ${formatNumber(netPayout)}`;
+
+            const overallRate = sumContractAmt > 0 ? ((sumAccumAmt / sumContractAmt) * 100).toFixed(1) : 0;
+            const prevOverallRate = sumContractAmt > 0 ? ((sumPrevAmt / sumContractAmt) * 100).toFixed(1) : 0;
+            const gcApprovedOverallRate = sumContractAmt > 0 ? ((sumGCApprovedAmt / sumContractAmt) * 100).toFixed(1) : 0;
+
+            document.getElementById('avgProgressRate').textContent = `${overallRate}%`;
+
+            const barPrev = document.getElementById('barPrev');
+            const barCurrent = document.getElementById('barCurrent');
+            
+            barPrev.style.width = `${prevOverallRate}%`;
+            barCurrent.style.width = `${gcApprovedOverallRate}%`;
+
+            document.getElementById('summaryProgressText').textContent = `누계 기성 사정율: ${overallRate}% (전체 ₩${formatNumber(sumContractAmt)} 중 ₩${formatNumber(sumAccumAmt)} 완료)`;
+            document.getElementById('summaryRatioText').textContent = `금회 기성 비율: ${gcApprovedOverallRate}%`;
+
+            lucide.createIcons();
+        }
+
+        // 월별 시공 수량 종합 대장 렌더링
+        function renderMonthlyTable() {
+            const tbody = document.getElementById('monthlyTableBody');
+            tbody.innerHTML = '';
+
+            masterItems.forEach((item, idx) => {
+                const contractAmt = item.qty * item.price;
+                if (!monthlyData[item.id]) {
+                    monthlyData[item.id] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 };
+                }
+
+                const months = monthlyData[item.id];
+                let mAccumMonthlyQty = 0;
+                for (let m = 1; m <= 12; m++) {
+                    mAccumMonthlyQty += Number(months[m] || 0);
+                }
+                const remainMonthlyQty = item.qty - mAccumMonthlyQty;
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-200 hover:bg-slate-50 h-10";
+
+                let monthInputsHtml = '';
+                for (let m = 1; m <= 12; m++) {
+                    monthInputsHtml += `
+                        <td class="border-r border-slate-200 p-0.5">
+                            <input type="number" value="${months[m] || 0}" onchange="updateMonthlyProgress(${item.id}, ${m}, this.value)" class="w-full text-right px-1 py-0.5 border border-transparent focus:border-purple-400 focus:bg-white rounded outline-none bg-transparent text-xs text-purple-700 font-medium">
+                        </td>
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td class="border-r border-slate-200 bg-slate-50 font-bold">${idx + 1}</td>
+                    <td class="border-r border-slate-200 text-left font-semibold text-xs px-2 truncate">${item.name}</td>
+                    <td class="border-r border-slate-200 text-right px-1.5 font-bold text-xs bg-slate-50">${formatNumber(item.qty)}</td>
+                    <td class="border-r border-slate-200 text-right px-1.5 text-xs text-slate-500">${formatNumber(contractAmt)}</td>
+                    ${monthInputsHtml}
+                    <td class="border-r border-slate-200 text-right px-1.5 bg-purple-50 font-bold text-xs text-purple-900">${formatNumber(mAccumMonthlyQty)}</td>
+                    <td class="text-right px-1.5 font-bold text-xs ${remainMonthlyQty < 0 ? 'text-red-500' : 'text-slate-600'}">${formatNumber(remainMonthlyQty)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateMonthlyProgress(itemId, month, val) {
+            if (!monthlyData[itemId]) monthlyData[itemId] = {};
+            monthlyData[itemId][month] = (val === '' || isNaN(val)) ? 0 : Number(val);
+            renderMonthlyTable();
+        }
+
+        // 계약 원장 마스터 수정 시
+        function updateMasterItem(id, field, value) {
+            const item = masterItems.find(i => i.id === id);
+            if (item) {
+                item[field] = value;
+                renderTable();
+            }
+        }
+
+        function updateDeductions() {
+            const round = rounds.find(x => x.roundNumber === currentRoundNumber);
+            if (round) {
+                round.retentionRate = Number(document.getElementById('retentionRate').value);
+                round.deductAdvance = Number(document.getElementById('deductAdvance').value);
+                round.deductSafety = Number(document.getElementById('deductSafety').value);
+                round.deductFuel = Number(document.getElementById('deductFuel').value);
+                round.deductMeal = Number(document.getElementById('deductMeal').value);
+                round.deductInsurance = Number(document.getElementById('deductInsurance').value);
+                round.deductPension = Number(document.getElementById('deductPension').value);
+                round.deductOthers = Number(document.getElementById('deductOthers').value);
+            }
+            renderTable();
+        }
+
+        // [모달 제어] 공종 추가
+        function openAddRowModal() {
+            const catSelect = document.getElementById('modalCategory');
+            catSelect.innerHTML = '';
+            
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                catSelect.appendChild(opt);
+            });
+
+            document.getElementById('addRowModal').classList.remove('hidden');
+        }
+
+        // 모달 닫기
+        function closeAddRowModal() {
+            document.getElementById('addRowModal').classList.add('hidden');
+        }
+
+        // 신규 공종 등록 실시간 반영 제어 (수정 완료)
+        function saveNewRow() {
+            const cat = document.getElementById('modalCategory').value;
+            const name = document.getElementById('modalName').value.trim() || '새 공종';
+            const spec = document.getElementById('modalSpec').value.trim() || '-';
+            const unit = document.getElementById('modalUnit').value.trim() || '㎥';
+            const qty = Number(document.getElementById('modalQty').value) || 0;
+            const price = Number(document.getElementById('modalPrice').value) || 0;
+
+            const nextId = masterItems.length > 0 ? Math.max(...masterItems.map(i => i.id)) + 1 : 1;
+            
+            const newItem = {
+                id: nextId,
+                category: cat,
+                name: name,
+                spec: spec,
+                unit: unit,
+                qty: qty,
+                price: price
+            };
+            
+            // 1. 세부 마스터 공종 원장에 보관
+            masterItems.push(newItem);
+            
+            // 2. 전체 회차 및 신규 생성된 세션에 클레임 템플릿 매핑
+            rounds.forEach(r => {
+                r.claims[nextId] = { curQty: 0, appQty: 0, adjustReason: '' };
+            });
+
+            // 3. 월별 진척 로그 구조 생성
+            if (!monthlyData[nextId]) {
+                monthlyData[nextId] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 };
+            }
+
+            // 인풋 클리어
+            document.getElementById('modalName').value = '';
+            document.getElementById('modalSpec').value = '';
+            document.getElementById('modalUnit').value = '';
+            document.getElementById('modalQty').value = '1000';
+            document.getElementById('modalPrice').value = '25000';
+
+            closeAddRowModal();
+            renderTable();
+            
+            showNotification('신규 공종 등록', `[${name}] 공종이 ${cat} 분류군에 추가되었습니다.`, 'success');
+        }
+
+        // 삭제 처리 모달
+        function openDeleteModal(id) {
+            const item = masterItems.find(i => i.id === id);
+            if (!item) return;
+
+            openConfirmModal(
+                '세부공종 영구 제거',
+                `[${item.name}] 항목을 기성 대장에서 영구 삭제하시겠습니까? 관련된 회차 이력 데이터도 소멸됩니다.`,
+                function() {
+                    masterItems = masterItems.filter(item => item.id !== id);
+                    rounds.forEach(r => {
+                        delete r.claims[id];
+                    });
+                    if (monthlyData[id]) delete monthlyData[id];
+                    
+                    renderTable();
+                    showNotification('삭제 완료', '선택한 공종이 마스터 및 이력에서 모두 제외되었습니다.', 'success');
+                }
+            );
+        }
+
+        // 대공정 마스터 리스트 세팅
+        function renderMasterCategorySettings() {
+            const container = document.getElementById('masterCategoryList');
+            container.innerHTML = '';
+
+            categories.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700";
+                div.innerHTML = `
+                    <span>📁 ${cat}</span>
+                    <button onclick="removeCategory('${cat}')" class="text-rose-500 hover:text-rose-700">
+                        <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+            
+            const filterSelect = document.getElementById('categoryFilter');
+            const savedVal = filterSelect.value;
+            filterSelect.innerHTML = '<option value="ALL">전체 보기</option>';
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                filterSelect.appendChild(opt);
+            });
+            if (categories.includes(savedVal)) filterSelect.value = savedVal;
+
+            lucide.createIcons();
+        }
+
+        function addNewCategory() {
+            const input = document.getElementById('newCategoryInput');
+            const newCat = input.value.trim();
+            if (newCat && !categories.includes(newCat)) {
+                categories.push(newCat);
+                input.value = '';
+                renderMasterCategorySettings();
+                renderTable();
+            }
+        }
+
+        function removeCategory(catName) {
+            const count = masterItems.filter(item => item.category === catName).length;
+            if (count > 0) {
+                showNotification('대공정 삭제 실패', `해당 공정에 소속된 세부 공종이 ${count}건 존재하여 강제 삭제할 수 없습니다.`, 'warning');
+                return;
+            }
+            categories = categories.filter(c => c !== catName);
+            renderMasterCategorySettings();
+            renderTable();
+            showNotification('대공정 삭제 완료', `${catName} 공정이 마스터 대장에서 안전하게 제외되었습니다.`, 'success');
+        }
+
+        // Gemini API를 활용한 원청 기성 리포트 보고 의견서 자동 작성 엔진
+        async function generateAIReport() {
+            const reportBox = document.getElementById('aiReportBox');
+            reportBox.innerHTML = '<div class="flex items-center gap-2"><i class="animate-spin text-blue-600" data-lucide="loader-2"></i> <span>Gemini AI가 실시간 공종 데이터 및 기성 초과 한도를 심층 분석하여 의견서를 작성하는 중입니다...</span></div>';
+            lucide.createIcons();
+
+            const roundData = rounds.find(x => x.roundNumber === currentRoundNumber);
+            if (!roundData) {
+                reportBox.textContent = "에러: 활성화된 회차 정보가 존재하지 않습니다.";
+                return;
+            }
+
+            let tableDetails = "";
+            masterItems.forEach(item => {
+                const claim = roundData.claims[item.id] || { curQty: 0, appQty: 0 };
+                const prev = getPrevAccumQty(item.id, currentRoundNumber);
+                tableDetails += `- [${item.category}] ${item.name} (계약수량: ${item.qty}, 전회까지누계: ${prev}, 금회청구: ${claim.curQty}, 원청사정: ${claim.appQty})\n`;
+            });
+
+            const systemPrompt = "당신은 노련한 건설 현장 소장 및 토목공사 공무 책임자입니다. 주어진 도급기성 대장 데이터를 바탕으로, 금회 청구의 적합성, 한도초과 리스크 유무, 사정 결과 요약, 그리고 다음 차수에 필요한 현장 관리 지시사항을 담은 3-4문장의 프로페셔널한 '현장 기성 사정 검토조치 의견서'를 작성하십시오. 한국어로 정중하게 작성해 주세요.";
+            const userQuery = `프로젝트: ○○지구 도로개설공사\n협력사: (주)대한토건\n현재 청구회차: 제 ${currentRoundNumber}회차\n상세 데이터:\n${tableDetails}`;
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            let delay = 1000;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        reportBox.innerHTML = `<strong>[원청 검토의견]</strong><br>${text.replace(/\n/g, '<br>')}`;
+                        return;
+                    }
+                } catch (e) {
+                    if (attempt === 3) {
+                        reportBox.textContent = "의견서 생성 중 외부 API 통신 제약이 발생했습니다. 수치를 재확인하시고 다시 시도해 주십시오.";
+                        return;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // 대시보드 그래픽 요약 연산
+        function renderDashboard() {
+            let sumContractAmt = 0;
+            let sumGCApprovedAmt = 0;
+            let sumAccumAmt = 0;
+
+            masterItems.forEach(item => {
+                sumContractAmt += item.qty * item.price;
+                const round = rounds.find(x => x.roundNumber === currentRoundNumber);
+                if (round && round.claims[item.id]) {
+                    sumGCApprovedAmt += round.claims[item.id].appQty * item.price;
+                }
+                const prevQty = getPrevAccumQty(item.id, currentRoundNumber);
+                const appQty = round ? (round.claims[item.id]?.appQty || 0) : 0;
+                sumAccumAmt += (prevQty + appQty) * item.price;
+            });
+
+            document.getElementById('dashTotalContract').textContent = `₩ ${formatNumber(sumContractAmt)}`;
+            document.getElementById('dashTotalApproved').textContent = `₩ ${formatNumber(sumGCApprovedAmt)}`;
+            document.getElementById('dashTotalAccum').textContent = `₩ ${formatNumber(sumAccumAmt)}`;
+
+            const catProgressContainer = document.getElementById('categorySummaryProgress');
+            catProgressContainer.innerHTML = '';
+
+            categories.forEach(cat => {
+                const catItems = masterItems.filter(item => item.category === cat);
+                let catContract = 0;
+                let catAccum = 0;
+
+                catItems.forEach(item => {
+                    catContract += item.qty * item.price;
+                    const prevQty = getPrevAccumQty(item.id, currentRoundNumber);
+                    const round = rounds.find(x => x.roundNumber === currentRoundNumber);
+                    const appQty = round ? (round.claims[item.id]?.appQty || 0) : 0;
+                    catAccum += (prevQty + appQty) * item.price;
+                });
+
+                const rate = catContract > 0 ? ((catAccum / catContract) * 100).toFixed(1) : 0;
+
+                const catDiv = document.createElement('div');
+                catDiv.className = 'p-4 bg-slate-50 border border-slate-200 rounded-xl shadow-sm';
+                catDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <i data-lucide="folder-check" class="w-3.5 h-3.5 text-blue-500"></i> ${cat}
+                        </span>
+                        <span class="text-xs font-black text-blue-600">${rate}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden mt-2">
+                        <div class="bg-blue-600 h-full transition-all duration-500" style="width: ${rate > 100 ? 100 : rate}%"></div>
+                    </div>
+                    <div class="flex justify-between text-[9px] text-slate-400 mt-2">
+                        <span>누계: ₩${formatNumber(catAccum)}</span>
+                        <span>계약: ₩${formatNumber(catContract)}</span>
+                    </div>
+                `;
+                catProgressContainer.appendChild(catDiv);
+            });
+
+            const container = document.getElementById('dashboardProgressBarContainer');
+            container.innerHTML = '';
+
+            masterItems.forEach(item => {
+                const contractAmt = item.qty * item.price;
+                const prevQty = getPrevAccumQty(item.id, currentRoundNumber);
+                const round = rounds.find(x => x.roundNumber === currentRoundNumber);
+                const appQty = round ? (round.claims[item.id]?.appQty || 0) : 0;
+                const accumAmt = (prevQty + appQty) * item.price;
+                const rate = contractAmt > 0 ? ((accumAmt / contractAmt) * 100).toFixed(1) : 0;
+
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-slate-50 border border-slate-150 rounded-lg';
+                div.innerHTML = `
+                    <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                        <span>[${item.category}] ${item.name} <span class="text-[10px] text-slate-400">(${item.spec})</span></span>
+                        <span>${rate}% (${formatNumber(accumAmt)}원 / ${formatNumber(contractAmt)}원)</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-600 h-full transition-all duration-500" style="width: ${rate > 100 ? 100 : rate}%"></div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            lucide.createIcons();
+        }
+
+        function syncSettings(type, val) {
+            if (type === 'retention') {
+                document.getElementById('retentionRate').value = val;
+                updateDeductions();
+            }
+        }
+
+        // ==========================================
+        // [신규 기능] 데이터 내보내기/백업/배포 기능
+        // ==========================================
+        function exportData() {
+            const exportPayload = {
+                version: "1.0.0",
+                categories: categories,
+                companies: companies,
+                sites: sites,
+                subcontractors: subcontractors,
+                currentCompanyId: currentCompanyId,
+                currentSiteId: currentSiteId,
+                currentSubcontractorId: currentSubcontractorId,
+                masterItems: masterItems,
+                rounds: rounds,
+                monthlyData: monthlyData,
+                currentRoundNumber: currentRoundNumber
+            };
+
+            const dataStr = JSON.stringify(exportPayload, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            const today = new Date().toISOString().slice(0,10).replace(/-/g, '');
+            link.download = `하도급기성대장_배포데이터_${today}.json`;
+            link.href = url;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            showNotification('데이터 배포 성공', '전체 기성 대장 및 백업 파일(.json) 추출이 완료되었습니다.', 'success');
+        }
+
+        // ==========================================
+        // [신규 기능] 데이터 가져오기/복구 기능
+        // ==========================================
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedState = JSON.parse(e.target.result);
+                    
+                    if (!importedState.categories || !importedState.rounds || !importedState.masterItems) {
+                        showNotification('복구 실패', '유효하지 않은 기성 대장 배포 파일입니다. JSON 파일 규격을 확인하세요.', 'error');
+                        return;
+                    }
+
+                    categories = importedState.categories;
+                    companies = importedState.companies || [];
+                    sites = importedState.sites || [];
+                    subcontractors = importedState.subcontractors || [];
+                    currentCompanyId = importedState.currentCompanyId || null;
+                    currentSiteId = importedState.currentSiteId || null;
+                    currentSubcontractorId = importedState.currentSubcontractorId || null;
+                    masterItems = importedState.masterItems;
+                    rounds = importedState.rounds;
+                    monthlyData = importedState.monthlyData || {};
+                    currentRoundNumber = importedState.currentRoundNumber || 1;
+
+                    initMasterSelectOptions();
+                    refreshMasterRegistryLists();
+                    renderRoundHistoryList();
+                    renderTable();
+                    renderMasterCategorySettings();
+                    
+                    showNotification('배포 데이터 로드 완료', `제 ${currentRoundNumber}회차 기준 백업 내역이 완벽히 복원되었습니다.`, 'success');
+                } catch (err) {
+                    showNotification('파싱 에러', '배포 데이터 파일 해석 중 심각한 오류가 발생했습니다.', 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // ==========================================
+        // [신규 기능] 토탈 시스템 초기화 기동 요청
+        // ==========================================
+        function requestSystemReset() {
+            openConfirmModal(
+                '⚠️ 시스템 전체 데이터 초기화',
+                '이 작업을 실행하면 작성 중이던 모든 원청/하도급 마스터 정보, 월별 기성 로그, 대공정 분류 및 회차 사정 내역이 전부 삭제되며 기본 데모 상태로 초기화됩니다. 정말 실행하시겠습니까?',
+                function() {
+                    executeDefaultReset();
+                },
+                true
+            );
+        }
+
+        // 마스터 및 기성 데이터 데모 기본 템플릿 복구 처리
+        function executeDefaultReset() {
+            categories = ['토공사', '구조물공사', '배수공'];
+            companies = [
+                { id: 1, name: '태평양종합건설(주)', taxId: '120-81-00000', representative: '김원청' }
+            ];
+            sites = [
+                { id: 1, companyId: 1, name: '○○지구 도로개설공사 중 토공사', location: '원주시 일원', duration: '2025.01 ~ 2027.12' }
+            ];
+            subcontractors = [
+                { id: 1, name: '(주)대한토건', taxId: '135-81-22222', representative: '홍길동' }
+            ];
+            currentCompanyId = 1;
+            currentSiteId = 1;
+            currentSubcontractorId = 1;
+
+            masterItems = [
+                { id: 1, category: '토공사', name: '토사 굴착(기본공종)', spec: '백호 0.8㎥', unit: '㎥', qty: 1000, price: 5000 }
+            ];
+
+            rounds = [
+                {
+                    roundNumber: 1,
+                    status: 'reviewing',
+                    claims: {
+                        1: { curQty: 0, appQty: 0, adjustReason: '' }
+                    },
+                    retentionRate: 5,
+                    deductAdvance: 0,
+                    deductSafety: 0,
+                    deductFuel: 0,
+                    deductMeal: 0,
+                    deductInsurance: 0,
+                    deductPension: 0,
+                    deductOthers: 0
+                }
+            ];
+
+            monthlyData = {
+                1: { 1: 0 }
+            };
+
+            currentRoundNumber = 1;
+
+            initMasterSelectOptions();
+            refreshMasterRegistryLists();
+            renderRoundHistoryList();
+            renderTable();
+            renderMasterCategorySettings();
+
+            showNotification('대장 초기화 완료', '모든 기성 내역이 템플릿 초기 기본 설정 상태로 안전하게 갱신되었습니다.', 'warning');
+        }
+    </script>
+</body>
+</html>
